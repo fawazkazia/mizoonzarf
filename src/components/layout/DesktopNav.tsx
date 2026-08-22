@@ -29,10 +29,29 @@ export function DesktopNav({ items }: { items: NavItem[] }) {
     setActiveSlug(null);
   }
 
+  /** Cancels a pending close the instant the pointer re-enters ANY part of
+   * this subtree — critically including the mega panel itself, not just a
+   * nav trigger. Without this, moving the cursor from a trigger down into
+   * the panel below it crosses a small gap that isn't part of either
+   * element, which fires the wrapper's pointerleave and starts the close
+   * timer; nothing then cancelled it once the pointer landed on the panel,
+   * so the menu could vanish out from under the user mid-move. */
+  function cancelPendingClose() {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+  }
+
+  function handleFocusOut(e: React.FocusEvent<HTMLDivElement>) {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) closeNow();
+  }
+
   const activeItem = items.find((i) => i.slug === activeSlug && (i.columns.length > 0 || i.feature));
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key === "Escape") closeNow();
+  }
+
   return (
-    <div onPointerLeave={scheduleClose}>
+    <div onPointerEnter={cancelPendingClose} onPointerLeave={scheduleClose} onBlur={handleFocusOut} onKeyDown={handleKeyDown}>
       <nav className="flex items-center gap-8">
         {items.map((item) => {
           const isCurrent = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -56,8 +75,6 @@ export function DesktopNav({ items }: { items: NavItem[] }) {
                   if (hasMenu && (e.key === "ArrowDown" || e.key === " ")) {
                     e.preventDefault();
                     setActiveSlug(item.slug);
-                  } else if (e.key === "Escape") {
-                    closeNow();
                   }
                 }}
               >

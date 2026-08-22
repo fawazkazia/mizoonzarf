@@ -49,9 +49,16 @@ type CategoryBannerLookup = (slug: string) => CategoryBannerHit | null;
  * how the footer used to silently diverge from the header whenever a
  * category was added). "Sale" is appended as a virtual item since it's a
  * page (/sale), not a real Category row — see [category]/page.tsx's
- * category === "sale" special case.
+ * category === "sale" special case. It still gets a real dropdown (empty
+ * `columns` would mean no mega menu at all for it), built from the sort/
+ * discount params the /sale route already supports, with an optional
+ * feature banner sourced the same way a category's would be.
  */
-export function buildNavItems(categories: CategoryWithChildren[], getCategoryBanner?: CategoryBannerLookup): NavItem[] {
+export function buildNavItems(
+  categories: CategoryWithChildren[],
+  getCategoryBanner?: CategoryBannerLookup,
+  saleFeature?: CategoryBannerHit | null
+): NavItem[] {
   const items = categories.map((category) => buildNavItem(category, getCategoryBanner));
 
   items.push({
@@ -60,8 +67,31 @@ export function buildNavItems(categories: CategoryWithChildren[], getCategoryBan
     href: "/sale",
     tone: "sale",
     isVirtual: true,
-    quickLinks: [],
-    columns: [],
+    quickLinks: [
+      { label: "New Markdowns", href: "/sale?sort=newest" },
+      { label: "20% Off or More", href: "/sale?discount=20" },
+    ],
+    columns: [
+      {
+        title: "Shop Sale",
+        links: [
+          { label: "All Sale", href: "/sale" },
+          { label: "New Markdowns", href: "/sale?sort=newest", tone: "new" },
+          { label: "20% Off or More", href: "/sale?discount=20" },
+          { label: "30% Off or More", href: "/sale?discount=30" },
+          { label: "50% Off or More", href: "/sale?discount=50" },
+        ],
+      },
+    ],
+    feature: saleFeature
+      ? {
+          imageUrl: saleFeature.imageUrl,
+          seed: "sale",
+          title: saleFeature.title,
+          eyebrow: saleFeature.subtitle ?? undefined,
+          href: saleFeature.ctaLink || "/sale",
+        }
+      : { imageUrl: null, seed: "sale", title: "Shop the Sale", href: "/sale" },
   });
 
   return items;
