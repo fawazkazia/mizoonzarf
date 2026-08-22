@@ -1,0 +1,261 @@
+@import "tailwindcss";
+
+:root {
+  --color-ink: #14130f;
+  --color-ink-soft: #3a3833;
+  --color-ink-mute: #6b675e;
+  --color-paper: #faf7f2;
+  --color-paper-dim: #f1ece2;
+  --color-paper-raise: #ffffff;
+  --color-line: #e4ddce;
+  --color-line-strong: #cdc2ac;
+  --color-gold: #a9803f;
+  --color-gold-soft: #d8c39a;
+  --color-gold-deep: #8a6630;
+  --color-sale: #a3372f;
+  --color-success: #3f6b4c;
+  --font-display: "Cormorant Garamond", "Times New Roman", serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+
+  /* Layout height contract — shared across header, bottom nav, sticky ATC, FAB */
+  --header-bar-h: 2.25rem;
+  --header-main-h: 4.5rem;
+  --header-main-h-condensed: 3.5rem;
+  --bottom-nav-h: 3.5rem;
+  --sticky-atc-h: 4.25rem;
+
+  /* z-index scale — documented so new overlays don't clash */
+  --z-sticky: 10;
+  --z-fab: 20;
+  --z-bottom-nav: 30;
+  --z-header: 40;
+  --z-mega: 45;
+  --z-overlay: 50;
+  --z-panel: 60;
+  --z-toast: 70;
+
+  /* Motion durations — plain vars, not a @theme namespace, so used as duration-[var(--dur-2)] */
+  --dur-fast: 120ms;
+  --dur-1: 180ms;
+  --dur-2: 240ms;
+  --dur-3: 320ms;
+  --dur-slow: 480ms;
+}
+
+@theme inline {
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-ink-mute: var(--color-ink-mute);
+  --color-paper: var(--color-paper);
+  --color-paper-dim: var(--color-paper-dim);
+  --color-paper-raise: var(--color-paper-raise);
+  --color-line: var(--color-line);
+  --color-line-strong: var(--color-line-strong);
+  --color-gold: var(--color-gold);
+  --color-gold-soft: var(--color-gold-soft);
+  --color-gold-deep: var(--color-gold-deep);
+  --color-sale: var(--color-sale);
+  --color-success: var(--color-success);
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+
+  --radius-pill: 9999px;
+
+  --shadow-panel: 0 1px 2px rgb(20 19 15 / 0.04), 0 12px 32px -8px rgb(20 19 15 / 0.1);
+  --shadow-drawer: -12px 0 48px -12px rgb(20 19 15 / 0.18);
+  --shadow-drawer-left: 12px 0 48px -12px rgb(20 19 15 / 0.18);
+  --shadow-sticky: 0 1px 0 rgb(20 19 15 / 0.06), 0 8px 24px -16px rgb(20 19 15 / 0.16);
+  --shadow-lift: 0 8px 24px -12px rgb(20 19 15 / 0.14);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-emphasis: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --animate-fade-up: fade-up 0.5s var(--ease-out-soft) both;
+  --animate-marquee: marquee 28s linear infinite;
+  --animate-fade-in: fade-in var(--dur-3) var(--ease-out-soft) both;
+  --animate-menu-in: menu-in var(--dur-2) var(--ease-out-soft) both;
+  --animate-sheet-down: sheet-down var(--dur-3) var(--ease-out-soft) both;
+  --animate-badge-pop: badge-pop var(--dur-2) var(--ease-emphasis) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-hero-progress: hero-progress 6s linear forwards;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes menu-in {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes sheet-down {
+    from {
+      opacity: 0;
+      transform: translateY(-12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes badge-pop {
+    0% {
+      transform: scale(0.6);
+    }
+    60% {
+      transform: scale(1.15);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
+  @keyframes hero-progress {
+    from {
+      width: 0%;
+    }
+    to {
+      width: 100%;
+    }
+  }
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+h1,
+h2,
+h3,
+h4,
+.font-display {
+  font-family: var(--font-display);
+}
+
+::selection {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--header-main-h) + 1rem);
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Centre-out underline reveal on hover/focus — shared by nav links, mega-menu
+   links, footer links, search rows. */
+.link-reveal {
+  position: relative;
+}
+.link-reveal::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transition: transform var(--dur-1) var(--ease-out-soft);
+}
+.link-reveal:hover::after,
+.link-reveal:focus-visible::after {
+  transform: scaleX(1);
+}
+
+/* Parent-hover image zoom — wrap an <img>/Img in overflow-hidden and apply here. */
+.img-zoom {
+  overflow: hidden;
+}
+.img-zoom img {
+  transition: transform var(--dur-slow) var(--ease-out-soft);
+}
+.img-zoom:hover img {
+  transform: scale(1.04);
+}
+
+/* Scroll-triggered fade-in. Defaults visible so JS failure or crawlers never
+   hide content — only [data-observe] elements not yet marked .is-visible
+   start hidden. */
+[data-observe]:not(.is-visible) {
+  opacity: 0;
+  transform: translateY(16px);
+}
+.fade-in-section {
+  transition:
+    opacity var(--dur-slow) var(--ease-out-soft),
+    transform var(--dur-slow) var(--ease-out-soft);
+}
+.fade-in-section.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
