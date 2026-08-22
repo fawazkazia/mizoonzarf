@@ -26,6 +26,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
         searchTerm: q,
         onSale: sp.onSale === "1",
         inStockOnly: sp.inStock === "1",
+        minDiscountPercent: sp.discount ? Number(sp.discount) : undefined,
         sizes: toArray(sp.size),
         colors: toArray(sp.color),
         brands: toArray(sp.brand),

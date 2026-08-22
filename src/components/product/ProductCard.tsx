@@ -9,7 +9,7 @@ import { Rating } from "@/components/ui/Rating";
 import { useWishlistStore } from "@/stores/wishlist-store";
 import { useCartStore } from "@/stores/cart-store";
 import { useQuickViewStore } from "@/stores/quick-view-store";
-import { useSettings } from "@/components/SettingsContext";
+import { useDisplayPrice } from "@/hooks/useDisplayPrice";
 import type { ProductCard as ProductCardData } from "@/lib/data/products";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +18,7 @@ export function ProductCard({ product, className }: { product: ProductCardData; 
   const toggleWishlist = useWishlistStore((s) => s.toggle);
   const addItem = useCartStore((s) => s.addItem);
   const openQuickView = useQuickViewStore((s) => s.open);
-  const settings = useSettings();
+  const display = useDisplayPrice(product.price, product.compareAtPrice);
   const off = discountPercent(product.price, product.compareAtPrice);
   const singleVariant = product.variantCount <= 1 && product.defaultVariantId;
 
@@ -98,7 +98,10 @@ export function ProductCard({ product, className }: { product: ProductCardData; 
       <Link href={`/product/${product.slug}`} className="mt-3 flex flex-col gap-1.5">
         {product.brand && <p className="text-[11px] uppercase tracking-[0.1em] text-ink-soft/70">{product.brand}</p>}
         <p className="text-sm leading-snug">{product.name}</p>
-        <Price price={product.price} compareAt={product.compareAtPrice} currency={settings.currencySymbol} size="sm" />
+        <span className="inline-flex items-center gap-1">
+          {display.isConverted && <span className="text-ink-soft/60">≈</span>}
+          <Price price={display.price} compareAt={display.compareAt} currency={display.symbol} size="sm" />
+        </span>
         {product.reviewCount > 0 && <Rating value={product.rating} count={product.reviewCount} size={11} />}
 
         {product.colors.length > 0 && (

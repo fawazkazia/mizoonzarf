@@ -3,12 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea, Checkbox, Fieldset } from "@/components/admin/FormField";
 import { SingleImageUploader } from "@/components/admin/ImageUploader";
 import { updateSettings } from "./actions";
 import type { SettingsInput } from "@/lib/validation/admin-settings";
 import type { SiteSettings } from "@/lib/settings";
+
+type CurrencyOption = { code: string; symbol: string; rate: number };
 
 export function SettingsForm({ initial }: { initial: SiteSettings }) {
   const router = useRouter();
@@ -38,7 +41,21 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
   const [countryFlag, setCountryFlag] = useState(initial.header.countryFlag);
   const [logoUrl, setLogoUrl] = useState<string | null>(initial.branding.logoUrl || null);
   const [faviconUrl, setFaviconUrl] = useState<string | null>(initial.branding.faviconUrl || null);
+  const [currencyDisplayEnabled, setCurrencyDisplayEnabled] = useState(initial.currencyDisplay.enabled);
+  const [currencyOptions, setCurrencyOptions] = useState<CurrencyOption[]>(initial.currencyDisplay.options);
   const [loading, setLoading] = useState(false);
+
+  function updateCurrencyOption(index: number, patch: Partial<CurrencyOption>) {
+    setCurrencyOptions((prev) => prev.map((opt, i) => (i === index ? { ...opt, ...patch } : opt)));
+  }
+
+  function removeCurrencyOption(index: number) {
+    setCurrencyOptions((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function addCurrencyOption() {
+    setCurrencyOptions((prev) => [...prev, { code: "", symbol: "", rate: 1 }]);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -62,6 +79,7 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
         countryFlag,
       },
       branding: { logoUrl, faviconUrl },
+      currencyDisplay: { enabled: currencyDisplayEnabled, options: currencyOptions },
     };
 
     setLoading(true);
@@ -105,6 +123,51 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
           <Input required value={currencySymbol} onChange={(e) => setCurrencySymbol(e.target.value)} />
         </Field>
       </Fieldset>
+
+      <fieldset className="border border-line p-5">
+        <legend className="px-2 font-display text-lg">Currency Display</legend>
+        <p className="mt-1 text-xs text-ink-soft">
+          Display-only conversion. Shoppers can toggle these to preview approximate prices while browsing, but the
+          cart, checkout, and orders always charge in the Currency Code above.
+        </p>
+        <div className="mt-4">
+          <Checkbox
+            label="Let shoppers switch the displayed currency"
+            checked={currencyDisplayEnabled}
+            onChange={(e) => setCurrencyDisplayEnabled(e.target.checked)}
+          />
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3">
+          {currencyOptions.map((opt, i) => (
+            <div key={i} className="flex items-end gap-3">
+              <Field label="Code">
+                <Input value={opt.code} onChange={(e) => updateCurrencyOption(i, { code: e.target.value.toUpperCase() })} className="w-20" />
+              </Field>
+              <Field label="Symbol">
+                <Input value={opt.symbol} onChange={(e) => updateCurrencyOption(i, { symbol: e.target.value })} className="w-20" />
+              </Field>
+              <Field label={`Rate (1 ${currency || "AED"} = ? ${opt.code || "..."})`}>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  min={0}
+                  value={opt.rate}
+                  onChange={(e) => updateCurrencyOption(i, { rate: Number(e.target.value) })}
+                  className="w-32"
+                />
+              </Field>
+              <button type="button" onClick={() => removeCurrencyOption(i)} aria-label="Remove currency" className="mb-2.5 text-ink-soft hover:text-sale">
+                <Trash2 size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <button type="button" onClick={addCurrencyOption} className="mt-3 flex items-center gap-1.5 text-xs uppercase tracking-[0.1em] text-ink-soft hover:text-ink">
+          <Plus size={14} /> Add Currency
+        </button>
+      </fieldset>
 
       <Fieldset title="Tax">
         <Field label="Tax Percent">

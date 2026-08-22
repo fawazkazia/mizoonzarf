@@ -23,6 +23,8 @@ function buildChips(searchParams: URLSearchParams): Chip[] {
   if (rating) chips.push({ key: "rating", value: rating, label: `${rating}+ stars` });
   if (searchParams.get("inStock")) chips.push({ key: "inStock", value: "1", label: "In Stock" });
   if (searchParams.get("onSale")) chips.push({ key: "onSale", value: "1", label: "On Sale" });
+  const discount = searchParams.get("discount");
+  if (discount) chips.push({ key: "discount", value: discount, label: `${discount}% Off or More` });
   return chips;
 }
 

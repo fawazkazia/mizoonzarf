@@ -38,6 +38,17 @@ export interface SiteSettings {
     logoUrl: string;
     faviconUrl: string;
   };
+  /**
+   * Display-only currency conversion: the store's real currency (`currency`
+   * above) is the only one ever stored or charged — cart, checkout, and
+   * orders always use it. This block only lets a shopper *view* approximate
+   * prices in another currency while browsing; `rate` is "1 unit of the
+   * base currency equals `rate` units of this one."
+   */
+  currencyDisplay: {
+    enabled: boolean;
+    options: { code: string; symbol: string; rate: number }[];
+  };
 }
 
 const DEFAULT_SETTINGS: SiteSettings = {
@@ -78,6 +89,15 @@ const DEFAULT_SETTINGS: SiteSettings = {
     logoUrl: "",
     faviconUrl: "",
   },
+  currencyDisplay: {
+    enabled: true,
+    options: [
+      { code: "USD", symbol: "$", rate: 0.2723 },
+      { code: "EUR", symbol: "€", rate: 0.2517 },
+      { code: "GBP", symbol: "£", rate: 0.2163 },
+      { code: "SAR", symbol: "SAR", rate: 1.0225 },
+    ],
+  },
 };
 
 /**
@@ -97,5 +117,6 @@ export const getSettings = cache(async (): Promise<SiteSettings> => {
     footer: { ...DEFAULT_SETTINGS.footer, ...(overrides.footer as object) },
     header: { ...DEFAULT_SETTINGS.header, ...(overrides.header as object) },
     branding: { ...DEFAULT_SETTINGS.branding, ...(overrides.branding as object) },
+    currencyDisplay: { ...DEFAULT_SETTINGS.currencyDisplay, ...(overrides.currencyDisplay as object) },
   } as SiteSettings;
 });

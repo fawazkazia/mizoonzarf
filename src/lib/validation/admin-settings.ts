@@ -37,6 +37,18 @@ export const settingsInputSchema = z.object({
     logoUrl: z.string().optional().nullable(),
     faviconUrl: z.string().optional().nullable(),
   }),
+  currencyDisplay: z.object({
+    enabled: z.boolean().default(true),
+    options: z
+      .array(
+        z.object({
+          code: z.string().min(1).max(6),
+          symbol: z.string().min(1).max(6),
+          rate: z.coerce.number().positive(),
+        })
+      )
+      .default([]),
+  }),
 });
 
 export type SettingsInput = z.infer<typeof settingsInputSchema>;

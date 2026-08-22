@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CurrencySwitcher } from "@/components/layout/CurrencySwitcher";
 
 interface UtilityBarProps {
   promoMessages: string[];
@@ -11,10 +12,9 @@ interface UtilityBarProps {
   showFreeShipping: boolean;
 }
 
-/** Rotating promo/support/country strip. A working country/currency picker
- * is deliberately out of scope — there's one global currency and one price
- * per product, so a dropdown that changes nothing would be worse than no
- * dropdown; this renders as a static, non-interactive label instead. */
+/** Rotating promo/support/country strip. Country stays a static label (the
+ * store only ships/prices for one region), but currency is now a real
+ * display-only switcher — see CurrencySwitcher and useDisplayPrice. */
 export function UtilityBar({
   promoMessages,
   supportPhone,
@@ -42,8 +42,14 @@ export function UtilityBar({
       <span key={safeIndex} className="animate-fade-in truncate text-center sm:justify-self-center">
         {messages[safeIndex]}
       </span>
-      <span className="hidden truncate sm:flex sm:items-center sm:justify-self-end sm:gap-1.5">
-        <span aria-hidden="true">{countryFlag}</span> {countryLabel.split(" ")[0]}
+      <span className="hidden items-center gap-2 truncate sm:flex sm:justify-self-end">
+        <span className="flex items-center gap-1.5">
+          <span aria-hidden="true">{countryFlag}</span> {countryLabel.split(" ")[0]}
+        </span>
+        <span aria-hidden="true" className="opacity-40">
+          /
+        </span>
+        <CurrencySwitcher />
       </span>
     </div>
   );

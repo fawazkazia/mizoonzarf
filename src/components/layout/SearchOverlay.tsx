@@ -7,8 +7,8 @@ import { Search as SearchIcon, X } from "lucide-react";
 import { Img } from "@/components/ui/ArtImage";
 import { Price } from "@/components/ui/Price";
 import { Sheet } from "@/components/ui/Sheet";
-import { useSettings } from "@/components/SettingsContext";
 import { useUIStore } from "@/stores/ui-store";
+import { useDisplayPrice } from "@/hooks/useDisplayPrice";
 import type { NavItem } from "@/lib/nav";
 
 interface SuggestionProduct {
@@ -22,11 +22,20 @@ interface SuggestionProduct {
 
 const RECENT_KEY = "recent_searches";
 
+function ResultPrice({ price, compareAt }: { price: number; compareAt: number | null }) {
+  const display = useDisplayPrice(price, compareAt);
+  return (
+    <span className="mt-1 inline-flex items-center gap-1">
+      {display.isConverted && <span className="text-ink-soft/60">≈</span>}
+      <Price price={display.price} compareAt={display.compareAt} currency={display.symbol} size="sm" />
+    </span>
+  );
+}
+
 export function SearchOverlay({ categories = [] }: { categories?: NavItem[] }) {
   const open = useUIStore((s) => s.searchOpen);
   const setOpen = useUIStore((s) => s.setSearchOpen);
   const router = useRouter();
-  const settings = useSettings();
   const [query, setQuery] = useState("");
   const [products, setProducts] = useState<SuggestionProduct[]>([]);
   const [popular, setPopular] = useState<string[]>([]);
@@ -199,7 +208,7 @@ export function SearchOverlay({ categories = [] }: { categories?: NavItem[] }) {
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium">{p.name}</p>
-                    <Price price={p.price} compareAt={p.compareAtPrice} currency={settings.currencySymbol} size="sm" className="mt-1" />
+                    <ResultPrice price={p.price} compareAt={p.compareAtPrice} />
                   </div>
                 </Link>
               ))}
