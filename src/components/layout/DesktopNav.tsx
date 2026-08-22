@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -87,11 +88,24 @@ export function DesktopNav({ items }: { items: NavItem[] }) {
 
       {activeItem && (
         <>
-          <div
-            className="fixed inset-0 z-[35] bg-ink/25 transition-opacity duration-[var(--dur-2)]"
-            onClick={closeNow}
-            aria-hidden="true"
-          />
+          {/* Portaled to <body>: `header` is `position: sticky` + z-index,
+              which creates its own stacking context. Rendered as a normal
+              descendant, this scrim's z-index would only be compared
+              against header's OWN children — since the nav row has no
+              explicit z-index, the scrim (being explicitly positioned)
+              would paint ON TOP of the entire nav bar once open, silently
+              eating hover/click on every other item until it was dismissed.
+              Portaling escapes that context so it's correctly layered below
+              the header (z-40) and above the page, as intended. */}
+          {typeof document !== "undefined" &&
+            createPortal(
+              <div
+                className="fixed inset-0 z-[35] bg-ink/25 transition-opacity duration-[var(--dur-2)]"
+                onClick={closeNow}
+                aria-hidden="true"
+              />,
+              document.body
+            )}
           <MegaMenu item={activeItem} onClose={closeNow} />
         </>
       )}
