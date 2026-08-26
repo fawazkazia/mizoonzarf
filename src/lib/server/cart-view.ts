@@ -16,6 +16,7 @@ export interface CartLineView {
   quantity: number;
   stock: number;
   image: string | null;
+  gstRate: number;
 }
 
 export interface CartView {
@@ -27,6 +28,9 @@ export interface CartView {
   discountAmount: number;
   shippingFee: number;
   taxAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
   total: number;
   freeShippingApplied: boolean;
 }
@@ -50,6 +54,7 @@ export async function buildCartView(cart: CartWithItems | null, settings: SiteSe
     quantity: item.quantity,
     stock: item.variant.stock,
     image: item.variant.imageUrl ?? item.product.images[0]?.url ?? null,
+    gstRate: item.product.gstRate != null ? Number(item.product.gstRate) : settings.taxPercent,
   }));
 
   let coupon: AppliedCoupon | null = null;
@@ -66,7 +71,7 @@ export async function buildCartView(cart: CartWithItems | null, settings: SiteSe
   }
 
   const totals = calculateTotals(
-    lines.map((l) => ({ price: l.price, salePrice: l.salePrice, quantity: l.quantity })),
+    lines.map((l) => ({ price: l.price, salePrice: l.salePrice, quantity: l.quantity, gstRate: l.gstRate })),
     settings,
     coupon
   );

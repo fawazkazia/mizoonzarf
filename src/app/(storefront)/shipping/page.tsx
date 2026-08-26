@@ -1,4 +1,5 @@
 import { getSettings } from "@/lib/settings";
+import { formatINR } from "@/lib/currency";
 import { Container } from "@/components/ui/Container";
 
 export const metadata = { title: "Shipping Information" };
@@ -13,14 +14,14 @@ export default async function ShippingPage() {
         <div className="border border-line p-5">
           <p className="font-medium text-ink">Standard Delivery</p>
           <p className="mt-1 text-sm">
-            {settings.shipping.standardDays} — {settings.currencySymbol} {settings.shipping.standardFee} (free on orders over{" "}
-            {settings.currencySymbol} {settings.shipping.freeShippingThreshold})
+            {settings.shipping.standardDays} — {formatINR(settings.shipping.standardFee)} (free on orders over{" "}
+            {formatINR(settings.shipping.freeShippingThreshold)})
           </p>
         </div>
         <div className="border border-line p-5">
           <p className="font-medium text-ink">Express Delivery</p>
           <p className="mt-1 text-sm">
-            {settings.shipping.expressDays} — {settings.currencySymbol} {settings.shipping.expressFee}
+            {settings.shipping.expressDays} — {formatINR(settings.shipping.expressFee)}
           </p>
         </div>
         <p className="text-sm">

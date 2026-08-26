@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Plus, Minus } from "lucide-react";
 import { SIZE_GUIDES } from "@/lib/size-guides";
+import { formatINR } from "@/lib/currency";
 
 interface Props {
   description: string;
@@ -14,7 +15,6 @@ interface Props {
   attributes?: Record<string, string | number> | null;
   tags?: string[];
   freeShippingThreshold?: number;
-  currencySymbol?: string;
 }
 
 function Section({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
@@ -42,7 +42,6 @@ export function ProductAttributes({
   attributes,
   tags,
   freeShippingThreshold,
-  currencySymbol = "AED",
 }: Props) {
   const sizeGuide = sizeGuideType ? SIZE_GUIDES[sizeGuideType] : null;
   const attributeEntries = attributes ? Object.entries(attributes) : [];
@@ -114,7 +113,7 @@ export function ProductAttributes({
       <Section title="Shipping & Returns">
         <p>
           {freeShippingThreshold
-            ? `Free standard shipping on orders over ${currencySymbol} ${freeShippingThreshold}.`
+            ? `Free standard shipping on orders over ${formatINR(freeShippingThreshold)}.`
             : "Standard shipping fees apply at checkout."}{" "}
           Easy returns within 14 days of delivery.
         </p>

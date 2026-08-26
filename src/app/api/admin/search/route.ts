@@ -9,9 +9,9 @@ export async function GET(req: NextRequest) {
   }
 
   const q = req.nextUrl.searchParams.get("q")?.trim() ?? "";
-  if (q.length < 2) return NextResponse.json({ products: [], orders: [], customers: [] });
+  if (q.length < 2) return NextResponse.json({ products: [], orders: [], customers: [], variants: [] });
 
-  const [products, orders, customers] = await Promise.all([
+  const [products, orders, customers, variants] = await Promise.all([
     db.product.findMany({
       where: { OR: [{ name: { contains: q, mode: "insensitive" } }, { sku: { contains: q, mode: "insensitive" } }] },
       select: { id: true, name: true, slug: true },
@@ -30,7 +30,12 @@ export async function GET(req: NextRequest) {
       select: { id: true, name: true, email: true },
       take: 5,
     }),
+    db.productVariant.findMany({
+      where: { OR: [{ barcode: { contains: q, mode: "insensitive" } }, { sku: { contains: q, mode: "insensitive" } }] },
+      select: { id: true, sku: true, barcode: true, product: { select: { id: true, name: true } } },
+      take: 5,
+    }),
   ]);
 
-  return NextResponse.json({ products, orders, customers });
+  return NextResponse.json({ products, orders, customers, variants });
 }

@@ -1,1 +1,1 @@
-﻿ALTER TABLE "users" ADD COLUMN "notes" TEXT;
+ALTER TABLE "users" ADD COLUMN "notes" TEXT;

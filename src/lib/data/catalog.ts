@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { toProductCard, cardInclude, type ProductCard } from "@/lib/data/products";
 import type { Prisma } from "@/generated/prisma/client";
 
-export type SortOption = "recommended" | "newest" | "price_asc" | "price_desc" | "best_selling" | "rating";
+export type SortOption = "recommended" | "newest" | "price_asc" | "price_desc" | "best_selling" | "rating" | "highest_discount";
 
 export interface CatalogQuery {
   categorySlug?: string;
@@ -10,6 +10,8 @@ export interface CatalogQuery {
   saleOnly?: boolean;
   onSale?: boolean;
   inStockOnly?: boolean;
+  newArrivals?: boolean;
+  bestSellers?: boolean;
   collectionSlug?: string;
   minDiscountPercent?: number;
   searchTerm?: string;
@@ -22,6 +24,8 @@ export interface CatalogQuery {
   sort?: SortOption;
   page?: number;
 }
+
+const NEW_ARRIVAL_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 
 export interface CatalogFacetColor {
   name: string;
@@ -65,6 +69,10 @@ const SORT_ORDER: Record<SortOption, Prisma.ProductOrderByWithRelationInput[]> =
   price_desc: [{ basePrice: "desc" }],
   best_selling: [{ purchaseCount: "desc" }],
   rating: [{ avgRating: "desc" }],
+  // Unused by the Prisma orderBy path — highest_discount is computed via
+  // getProductIdsSortedByDiscount instead. Kept here only so this map stays
+  // exhaustive over SortOption.
+  highest_discount: [{ createdAt: "desc" }],
 };
 
 async function resolveCategoryIds(categorySlug?: string, subCategorySlug?: string) {
@@ -123,6 +131,7 @@ function buildProductWhere(
     };
   }
   if (query.minRating) where.avgRating = { gte: query.minRating };
+  if (query.newArrivals) where.createdAt = { gte: new Date(Date.now() - NEW_ARRIVAL_WINDOW_MS) };
 
   const variantSome: Prisma.ProductVariantWhereInput = {};
   if (query.saleOnly || query.onSale) variantSome.salePrice = { not: null };
@@ -153,24 +162,86 @@ async function getProductIdsWithMinDiscount(minPercent: number): Promise<string[
   return rows.map((r) => r.productId);
 }
 
+/**
+ * "Best Sellers" isn't a stored flag — it's derived as the top quartile by
+ * purchaseCount among ACTIVE products in the current category scope, so the
+ * filter stays honest (data-driven) without a schema/admin-config addition.
+ */
+async function getBestSellerProductIds(categoryIds: string[] | null): Promise<string[]> {
+  const where: Prisma.ProductWhereInput = { status: "ACTIVE", purchaseCount: { gt: 0 } };
+  if (categoryIds) where.categoryId = { in: categoryIds };
+
+  const products = await db.product.findMany({ where, select: { id: true }, orderBy: { purchaseCount: "desc" } });
+  if (products.length === 0) return [];
+
+  const topCount = Math.max(1, Math.ceil(products.length * 0.25));
+  return products.slice(0, topCount).map((p) => p.id);
+}
+
+function intersectIds(a: string[] | null, b: string[] | null): string[] | null {
+  if (!a) return b;
+  if (!b) return a;
+  const set = new Set(b);
+  return a.filter((id) => set.has(id));
+}
+
+/**
+ * Percentage discount is computed across variant rows, so it can't be a
+ * Prisma `orderBy`. Mirrors getProductIdsWithMinDiscount's raw-query
+ * approach, but returns a full ranked ID list (undiscounted products sort
+ * last) instead of a min-percent cutoff.
+ */
+async function getProductIdsSortedByDiscount(where: Prisma.ProductWhereInput): Promise<string[]> {
+  const allIds = (await db.product.findMany({ where, select: { id: true } })).map((p) => p.id);
+  if (allIds.length === 0) return [];
+
+  const ranked = await db.$queryRaw<{ productId: string }[]>`
+    SELECT pv."productId" AS "productId", MAX(((pv.price - pv."salePrice") / pv.price) * 100) AS "maxDiscount"
+    FROM "product_variants" pv
+    WHERE pv."salePrice" IS NOT NULL AND pv.price > 0 AND pv."productId" = ANY(${allIds})
+    GROUP BY pv."productId"
+    ORDER BY "maxDiscount" DESC
+  `;
+
+  const rankedIds = ranked.map((r) => r.productId);
+  const rankedSet = new Set(rankedIds);
+  return [...rankedIds, ...allIds.filter((id) => !rankedSet.has(id))];
+}
+
 export async function queryProducts(query: CatalogQuery): Promise<CatalogResult> {
   const { ids: categoryIds, title } = await resolveCategoryIds(query.categorySlug, query.subCategorySlug);
   const page = Math.max(query.page ?? 1, 1);
 
-  const discountProductIds = query.minDiscountPercent ? await getProductIdsWithMinDiscount(query.minDiscountPercent) : null;
-  const where = buildProductWhere(query, categoryIds, discountProductIds);
-
-  const [items, total, facets] = await Promise.all([
-    db.product.findMany({
-      where,
-      orderBy: SORT_ORDER[query.sort ?? "recommended"],
-      skip: (page - 1) * PER_PAGE,
-      take: PER_PAGE,
-      include: cardInclude,
-    }),
-    db.product.count({ where }),
-    getFacets(query, categoryIds, discountProductIds),
+  const [discountProductIds, bestSellerProductIds] = await Promise.all([
+    query.minDiscountPercent ? getProductIdsWithMinDiscount(query.minDiscountPercent) : Promise.resolve(null),
+    query.bestSellers ? getBestSellerProductIds(categoryIds) : Promise.resolve(null),
   ]);
+  const combinedIds = intersectIds(discountProductIds, bestSellerProductIds);
+  const where = buildProductWhere(query, categoryIds, combinedIds);
+
+  let items;
+  let total;
+  if (query.sort === "highest_discount") {
+    const orderedIds = await getProductIdsSortedByDiscount(where);
+    total = orderedIds.length;
+    const pageIds = orderedIds.slice((page - 1) * PER_PAGE, (page - 1) * PER_PAGE + PER_PAGE);
+    const rows = await db.product.findMany({ where: { id: { in: pageIds } }, include: cardInclude });
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    items = pageIds.map((id) => byId.get(id)!).filter(Boolean);
+  } else {
+    [items, total] = await Promise.all([
+      db.product.findMany({
+        where,
+        orderBy: SORT_ORDER[query.sort ?? "recommended"],
+        skip: (page - 1) * PER_PAGE,
+        take: PER_PAGE,
+        include: cardInclude,
+      }),
+      db.product.count({ where }),
+    ]);
+  }
+
+  const facets = await getFacets(query, categoryIds, combinedIds);
 
   return {
     products: items.map(toProductCard),

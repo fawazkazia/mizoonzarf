@@ -1,10 +1,17 @@
 import { ConsoleNotificationProvider } from "./console";
+import { ResendEmailProvider } from "./email";
+import { TwilioSmsProvider } from "./sms";
+import { WhatsAppBusinessProvider } from "./whatsapp";
 import type { NotificationChannel, NotificationMessage, NotificationProvider } from "./provider";
 
+const emailProvider = new ResendEmailProvider();
+const smsProvider = new TwilioSmsProvider();
+const whatsappProvider = new WhatsAppBusinessProvider();
+
 const providers: Record<NotificationChannel, NotificationProvider> = {
-  EMAIL: new ConsoleNotificationProvider("EMAIL"),
-  SMS: new ConsoleNotificationProvider("SMS"),
-  WHATSAPP: new ConsoleNotificationProvider("WHATSAPP"),
+  EMAIL: emailProvider.isConfigured() ? emailProvider : new ConsoleNotificationProvider("EMAIL"),
+  SMS: smsProvider.isConfigured() ? smsProvider : new ConsoleNotificationProvider("SMS"),
+  WHATSAPP: whatsappProvider.isConfigured() ? whatsappProvider : new ConsoleNotificationProvider("WHATSAPP"),
 };
 
 export async function notify(message: NotificationMessage): Promise<void> {

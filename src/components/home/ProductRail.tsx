@@ -24,13 +24,13 @@ export function ProductRail({
   if (products.length === 0) return null;
 
   return (
-    <section className={surface === "paper-dim" ? "bg-paper-dim py-20 sm:py-28" : "py-20 sm:py-28"}>
+    <section className={surface === "paper-dim" ? "bg-paper-dim py-12 sm:py-16" : "py-12 sm:py-16"}>
       <Container>
-        <FadeIn className="mb-10 flex items-end justify-between">
+        <FadeIn className="mb-8 flex items-end justify-between">
           <div>
-            {eyebrow && <p className="mb-2 text-xs uppercase tracking-[0.2em] text-gold-deep">{eyebrow}</p>}
-            <h2 className="font-display text-3xl sm:text-4xl">{title}</h2>
-            {subtitle && <p className="mt-2 text-sm text-ink-soft">{subtitle}</p>}
+            {eyebrow && <p className="mb-1.5 text-xs uppercase tracking-[0.2em] text-gold-deep">{eyebrow}</p>}
+            <h2 className="font-display text-2xl sm:text-3xl">{title}</h2>
+            {subtitle && <p className="mt-1.5 text-sm text-ink-soft">{subtitle}</p>}
           </div>
           {viewAllHref && (
             <Link href={viewAllHref} className="link-reveal hidden items-center gap-1.5 text-xs uppercase tracking-[0.12em] sm:flex">
@@ -41,7 +41,7 @@ export function ProductRail({
 
         <ScrollRail trackClassName="pb-2">
           {products.map((p) => (
-            <ProductCard key={p.id} product={p} className="w-[62%] shrink-0 snap-start sm:w-[38%] lg:w-[23%]" />
+            <ProductCard key={p.id} product={p} className="w-44 shrink-0 snap-start sm:w-52 lg:w-60" />
           ))}
         </ScrollRail>
 

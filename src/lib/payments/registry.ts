@@ -1,16 +1,25 @@
 import { CashOnDeliveryProvider } from "./cod";
+import { StripePaymentProvider } from "./stripe";
+import { RazorpayPaymentProvider } from "./razorpay";
 import { NotConfiguredPaymentProvider, type PaymentProvider, type PaymentMethodId } from "./provider";
 
 /**
- * Central registry for every payment method the checkout can offer. Only COD
- * ships functional in Phase 1. The others are typed, listed in the UI as
- * "coming soon", and will throw a clear error if invoked — connect real keys
- * (STRIPE_SECRET_KEY, TELR_*, TABBY_*, TAMARA_*, ...) in a later phase to
- * swap in a real implementation without touching checkout code.
+ * Central registry for every payment method the checkout can offer. COD and
+ * Razorpay (once RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET are set) are the primary
+ * India methods. Stripe (CARD) stays available for non-India use. The rest are
+ * typed, listed in the UI as "coming soon", and will throw a clear error if
+ * invoked — connect real keys in a later phase to swap in a real
+ * implementation without touching checkout code.
  */
+const stripeProvider = new StripePaymentProvider();
+const razorpayProvider = new RazorpayPaymentProvider();
+
 const providers: Record<PaymentMethodId, PaymentProvider> = {
   COD: new CashOnDeliveryProvider(),
-  CARD: new NotConfiguredPaymentProvider("CARD", "Credit/Debit Card", "STRIPE_SECRET_KEY or your gateway's key"),
+  RAZORPAY: razorpayProvider.isConfigured()
+    ? razorpayProvider
+    : new NotConfiguredPaymentProvider("RAZORPAY", "UPI / Cards / Netbanking / Wallets", "RAZORPAY_KEY_ID"),
+  CARD: stripeProvider.isConfigured() ? stripeProvider : new NotConfiguredPaymentProvider("CARD", "Credit/Debit Card", "STRIPE_SECRET_KEY"),
   APPLE_PAY: new NotConfiguredPaymentProvider("APPLE_PAY", "Apple Pay", "APPLE_PAY_MERCHANT_ID"),
   GOOGLE_PAY: new NotConfiguredPaymentProvider("GOOGLE_PAY", "Google Pay", "GOOGLE_PAY_MERCHANT_ID"),
   PAYPAL: new NotConfiguredPaymentProvider("PAYPAL", "PayPal", "PAYPAL_CLIENT_ID"),

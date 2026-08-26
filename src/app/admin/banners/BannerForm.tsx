@@ -6,13 +6,37 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Checkbox, Fieldset } from "@/components/admin/FormField";
 import { SingleImageUploader } from "@/components/admin/ImageUploader";
+import { BannerContentPositionPicker, type ContentPosition } from "@/components/admin/BannerContentPositionPicker";
 import { createBanner, updateBanner } from "./actions";
 import type { BannerInput } from "@/lib/validation/admin-banner";
+
+/** Matches how each position actually renders on the storefront (Hero,
+ * PromoBanner, CategoryHero) so the recommendation isn't a guess. */
+const BANNER_DIMENSIONS: Record<BannerInput["position"], { desktop: string; mobile: string }> = {
+  HERO: { desktop: "1920 × 720px", mobile: "750 × 1000px" },
+  PROMO: { desktop: "1600 × 900px", mobile: "750 × 1000px" },
+  CATEGORY: { desktop: "1920 × 600px", mobile: "750 × 800px" },
+  POPUP: { desktop: "900 × 1100px", mobile: "700 × 900px" },
+};
+
+/** Only Hero and Promo render the title/subtitle/button as an overlay on the
+ * image, so only those positions offer the drag-to-position picker. */
+const POSITIONS_WITH_CONTENT_PICKER: BannerInput["position"][] = ["HERO", "PROMO"];
+
+function dimsToAspectRatio(dims: string) {
+  const [w, h] = dims.replace("px", "").split("×").map((n) => parseInt(n.trim(), 10));
+  return `${w} / ${h}`;
+}
 
 export interface BannerFormInitial {
   id: string;
   title: string;
   subtitle: string;
+  titleColor: string | null;
+  subtitleColor: string | null;
+  titleSize: BannerInput["titleSize"];
+  contentPositionX: number | null;
+  contentPositionY: number | null;
   imageUrl: string;
   mobileImageUrl: string | null;
   ctaText: string;
@@ -28,6 +52,14 @@ export function BannerForm({ initial }: { initial?: BannerFormInitial }) {
   const router = useRouter();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [subtitle, setSubtitle] = useState(initial?.subtitle ?? "");
+  const [titleColor, setTitleColor] = useState<string | null>(initial?.titleColor ?? null);
+  const [subtitleColor, setSubtitleColor] = useState<string | null>(initial?.subtitleColor ?? null);
+  const [titleSize, setTitleSize] = useState<BannerInput["titleSize"]>(initial?.titleSize ?? "MEDIUM");
+  const [contentPosition, setContentPosition] = useState<ContentPosition | null>(
+    initial?.contentPositionX != null && initial?.contentPositionY != null
+      ? { x: initial.contentPositionX, y: initial.contentPositionY }
+      : null
+  );
   const [imageUrl, setImageUrl] = useState<string | null>(initial?.imageUrl ?? null);
   const [mobileImageUrl, setMobileImageUrl] = useState<string | null>(initial?.mobileImageUrl ?? null);
   const [ctaText, setCtaText] = useState(initial?.ctaText ?? "");
@@ -48,6 +80,11 @@ export function BannerForm({ initial }: { initial?: BannerFormInitial }) {
     const payload: BannerInput = {
       title,
       subtitle: subtitle || undefined,
+      titleColor,
+      subtitleColor,
+      titleSize,
+      contentPositionX: contentPosition?.x ?? null,
+      contentPositionY: contentPosition?.y ?? null,
       imageUrl,
       mobileImageUrl,
       ctaText: ctaText || undefined,
@@ -117,18 +154,76 @@ export function BannerForm({ initial }: { initial?: BannerFormInitial }) {
         </div>
       </Fieldset>
 
+      <Fieldset title="Text Style">
+        <Field label="Title Color (optional)" hint="Leave unset to use the default theme color for this position.">
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={titleColor ?? "#faf7f2"}
+              onChange={(e) => setTitleColor(e.target.value)}
+              className="h-10 w-16 cursor-pointer border border-line bg-paper p-1"
+            />
+            {titleColor && (
+              <button type="button" onClick={() => setTitleColor(null)} className="text-xs text-ink-soft underline">
+                Use default
+              </button>
+            )}
+          </div>
+        </Field>
+        <Field label="Subtitle Color (optional)" hint="Leave unset to use the default theme color for this position.">
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={subtitleColor ?? "#d8c39a"}
+              onChange={(e) => setSubtitleColor(e.target.value)}
+              className="h-10 w-16 cursor-pointer border border-line bg-paper p-1"
+            />
+            {subtitleColor && (
+              <button type="button" onClick={() => setSubtitleColor(null)} className="text-xs text-ink-soft underline">
+                Use default
+              </button>
+            )}
+          </div>
+        </Field>
+        <Field label="Text Size" hint="Scales both the title and subtitle.">
+          <Select value={titleSize} onChange={(e) => setTitleSize(e.target.value as BannerInput["titleSize"])}>
+            <option value="SMALL">Small</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LARGE">Large</option>
+          </Select>
+        </Field>
+      </Fieldset>
+
       <Fieldset title="Images">
         <div>
-          <Field label="Desktop Image">
+          <Field label="Desktop Image" hint={`Recommended size: ${BANNER_DIMENSIONS[position].desktop}`}>
             <SingleImageUploader value={imageUrl} onChange={setImageUrl} />
           </Field>
         </div>
         <div>
-          <Field label="Mobile Image (optional)" hint="Falls back to the desktop image when empty.">
+          <Field
+            label="Mobile Image (optional)"
+            hint={`Falls back to the desktop image when empty. Recommended size: ${BANNER_DIMENSIONS[position].mobile}`}
+          >
             <SingleImageUploader value={mobileImageUrl} onChange={setMobileImageUrl} />
           </Field>
         </div>
       </Fieldset>
+
+      {POSITIONS_WITH_CONTENT_PICKER.includes(position) && (
+        <Fieldset title="Content Position">
+          <div className="sm:col-span-2">
+            <Field label="Title / Subtitle / Button Placement" hint="Drag or click on the preview to move the title, subtitle and button as a group. Desktop only — mobile keeps its standard stacked layout.">
+              <BannerContentPositionPicker
+                value={contentPosition}
+                onChange={setContentPosition}
+                imageUrl={imageUrl}
+                aspectRatio={dimsToAspectRatio(BANNER_DIMENSIONS[position].desktop)}
+              />
+            </Field>
+          </div>
+        </Fieldset>
+      )}
 
       <Button type="submit" size="lg" disabled={loading} className="self-start">
         {loading ? "Saving..." : initial ? "Save Changes" : "Create Banner"}

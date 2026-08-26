@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/admin-auth";
 import { collectionInputSchema, type CollectionInput } from "@/lib/validation/admin-collection";
+import { notifyAllCustomers } from "@/lib/notifications/inapp";
 
 function normalize(input: CollectionInput) {
   return {
@@ -34,6 +35,16 @@ export async function createCollection(raw: CollectionInput) {
   const collection = await db.collection.create({
     data: { ...normalize(input), products: { connect: input.productIds.map((id) => ({ id })) } },
   });
+
+  if (collection.isActive) {
+    await notifyAllCustomers({
+      type: "PROMOTION",
+      title: "New Collection",
+      body: `${collection.name} just launched.`,
+      link: `/collections/${collection.slug}`,
+    });
+  }
+
   revalidateCollectionPaths(collection.slug);
   return { id: collection.id };
 }

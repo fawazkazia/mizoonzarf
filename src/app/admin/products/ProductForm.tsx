@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea, Checkbox, Fieldset } from "@/components/admin/FormField";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { createProduct, updateProduct } from "./actions";
+import { generateBarcode, regenerateBarcode } from "../inventory/barcode-actions";
 import type { ProductInput } from "@/lib/validation/admin-product";
 
 interface VariantRow {
@@ -72,6 +73,8 @@ export interface ProductFormInitial {
   tags: string;
   status: string;
   isFeatured: boolean;
+  gstRate: string;
+  hsnCode: string;
   seoTitle: string;
   seoDescription: string;
   images: string[];
@@ -110,6 +113,8 @@ export function ProductForm({
   const [fragranceBaseNotes, setFragranceBaseNotes] = useState(initial?.fragranceBaseNotes ?? "");
   const [concentration, setConcentration] = useState(initial?.concentration ?? "");
   const [tags, setTags] = useState(initial?.tags ?? "");
+  const [gstRate, setGstRate] = useState(initial?.gstRate ?? "");
+  const [hsnCode, setHsnCode] = useState(initial?.hsnCode ?? "");
   const [status, setStatus] = useState(initial?.status ?? "ACTIVE");
   const [isFeatured, setIsFeatured] = useState(initial?.isFeatured ?? false);
   const [seoTitle, setSeoTitle] = useState(initial?.seoTitle ?? "");
@@ -118,9 +123,24 @@ export function ProductForm({
   const [collectionSlugs, setCollectionSlugs] = useState<string[]>(initial?.collectionSlugs ?? []);
   const [variants, setVariants] = useState<VariantRow[]>(initial?.variants ?? [emptyVariant()]);
   const [loading, setLoading] = useState(false);
+  const [generatingKey, setGeneratingKey] = useState<string | null>(null);
 
   function updateVariant(key: string, patch: Partial<VariantRow>) {
     setVariants((prev) => prev.map((v) => (v.key === key ? { ...v, ...patch } : v)));
+  }
+
+  async function handleGenerateBarcode(v: VariantRow) {
+    if (!v.id) return;
+    setGeneratingKey(v.key);
+    try {
+      const result = v.barcode ? await regenerateBarcode(v.id) : await generateBarcode(v.id);
+      updateVariant(v.key, { barcode: result.barcode });
+      toast.success(v.barcode ? "Barcode regenerated." : "Barcode generated.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't generate barcode.");
+    } finally {
+      setGeneratingKey(null);
+    }
   }
 
   function toggleCollection(slug: string) {
@@ -150,6 +170,8 @@ export function ProductForm({
       fragranceBaseNotes: fragranceBaseNotes || undefined,
       concentration: concentration || undefined,
       tags: tags || undefined,
+      gstRate: gstRate ? Number(gstRate) : undefined,
+      hsnCode: hsnCode || undefined,
       status: status as ProductInput["status"],
       isFeatured,
       seoTitle: seoTitle || undefined,
@@ -258,6 +280,15 @@ export function ProductForm({
         </div>
       </Fieldset>
 
+      <Fieldset title="GST">
+        <Field label="GST Rate (%)" hint="Leave blank to use the store's default GST % from Settings.">
+          <Input type="number" step="0.01" min={0} max={100} value={gstRate} onChange={(e) => setGstRate(e.target.value)} />
+        </Field>
+        <Field label="HSN/SAC Code">
+          <Input value={hsnCode} onChange={(e) => setHsnCode(e.target.value)} />
+        </Field>
+      </Fieldset>
+
       <Fieldset title="Description">
         <div className="sm:col-span-2">
           <Field label="Short Description">
@@ -340,17 +371,50 @@ export function ProductForm({
 
       <fieldset className="border border-line p-5">
         <legend className="px-2 font-display text-lg">Variants</legend>
+        <p className="text-xs text-ink-soft">
+          SKU, Barcode, Size, Colour, Colour swatch, Price, Sale Price, Stock, Low Stock Alert — a variant is flagged low stock once its
+          stock falls to or below its Low Stock Alert number. Leave Barcode blank to auto-generate one on save, or type a real
+          manufacturer/GS1 code to use that instead. New variants can only be generated/regenerated after the product is first saved.
+        </p>
         <div className="mt-3 flex flex-col gap-4">
           {variants.map((v) => (
-            <div key={v.key} className="grid gap-2 border border-line p-3 sm:grid-cols-7">
+            <div key={v.key} className="grid gap-2 border border-line p-3 sm:grid-cols-9">
               <Input placeholder="SKU" required value={v.sku} onChange={(e) => updateVariant(v.key, { sku: e.target.value.toUpperCase() })} />
+              <div className="flex gap-1">
+                <Input
+                  placeholder={v.id ? "Barcode" : "Barcode (auto on save)"}
+                  value={v.barcode}
+                  onChange={(e) => updateVariant(v.key, { barcode: e.target.value })}
+                />
+                {v.id && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="shrink-0"
+                    disabled={generatingKey === v.key}
+                    onClick={() => handleGenerateBarcode(v)}
+                  >
+                    {v.barcode ? "Regen" : "Generate"}
+                  </Button>
+                )}
+              </div>
               <Input placeholder="Size" value={v.size} onChange={(e) => updateVariant(v.key, { size: e.target.value })} />
               <Input placeholder="Colour" value={v.color} onChange={(e) => updateVariant(v.key, { color: e.target.value })} />
               <Input type="color" value={v.colorHex || "#cccccc"} onChange={(e) => updateVariant(v.key, { colorHex: e.target.value })} className="p-1" />
               <Input placeholder="Price" type="number" step="0.01" required value={v.price} onChange={(e) => updateVariant(v.key, { price: e.target.value })} />
               <Input placeholder="Sale Price" type="number" step="0.01" value={v.salePrice} onChange={(e) => updateVariant(v.key, { salePrice: e.target.value })} />
+              <Input placeholder="Stock" type="number" required value={v.stock} onChange={(e) => updateVariant(v.key, { stock: e.target.value })} />
               <div className="flex gap-2">
-                <Input placeholder="Stock" type="number" required value={v.stock} onChange={(e) => updateVariant(v.key, { stock: e.target.value })} />
+                <Input
+                  placeholder="Low Stock Alert"
+                  title="Flag this variant as low stock once its stock falls to or below this number"
+                  type="number"
+                  min={0}
+                  required
+                  value={v.lowStockThreshold}
+                  onChange={(e) => updateVariant(v.key, { lowStockThreshold: e.target.value })}
+                />
                 <button
                   type="button"
                   onClick={() => setVariants((prev) => prev.filter((row) => row.key !== v.key))}

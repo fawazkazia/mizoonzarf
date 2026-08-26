@@ -38,10 +38,15 @@ export function Gallery({ images, productName }: { images: { url: string; altTex
           ))}
         </div>
         {list.length > 1 && (
-          <div className="mt-3 flex justify-center gap-1.5">
-            {list.map((_, i) => (
-              <span key={i} className={cn("h-1 w-5", i === active ? "bg-ink" : "bg-line")} />
-            ))}
+          <div className="mt-3 flex items-center justify-center gap-3">
+            <div className="flex gap-1.5">
+              {list.map((_, i) => (
+                <span key={i} className={cn("h-1 w-5", i === active ? "bg-ink" : "bg-line")} />
+              ))}
+            </div>
+            <span className="text-[11px] tracking-[0.08em] text-ink-soft">
+              {active + 1} / {list.length}
+            </span>
           </div>
         )}
       </div>
@@ -69,13 +74,13 @@ export function Gallery({ images, productName }: { images: { url: string; altTex
           }}
           onMouseLeave={() => setZoom(null)}
         >
-          <div className="aspect-[4/5]">
+          <div className="aspect-[4/5] max-h-[calc(100vh-100px)]">
             <Img
               src={list[active].url}
               alt={list[active].altText ?? productName}
               seedFallback={`${productName}-${active}`}
               priority
-              className={cn("transition-transform duration-200", zoom && "scale-[1.8]")}
+              className={cn("object-contain transition-transform duration-200", zoom && "scale-[1.8]")}
               style={zoom ? { transformOrigin: `${zoom.x}% ${zoom.y}%` } : undefined}
             />
           </div>
@@ -86,6 +91,11 @@ export function Gallery({ images, productName }: { images: { url: string; altTex
           >
             <Maximize2 size={16} />
           </button>
+          {list.length > 1 && (
+            <span className="absolute bottom-3 left-3 bg-paper/90 px-2.5 py-1 text-[11px] tracking-[0.08em] text-ink-soft">
+              {active + 1} / {list.length}
+            </span>
+          )}
         </div>
       </div>
 

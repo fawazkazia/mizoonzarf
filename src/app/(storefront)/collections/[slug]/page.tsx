@@ -5,6 +5,7 @@ import { getProductsByCollectionSlug } from "@/lib/data/products";
 import { Container } from "@/components/ui/Container";
 import { Img } from "@/components/ui/ArtImage";
 import { ProductCard } from "@/components/product/ProductCard";
+import { CatalogGrid } from "@/components/catalog/CatalogGrid";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -37,11 +38,11 @@ export default async function CollectionPage({ params }: PageProps) {
         {products.length === 0 ? (
           <p className="py-16 text-center text-ink-soft">No products in this collection yet.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 xl:grid-cols-4">
+          <CatalogGrid>
             {products.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
-          </div>
+          </CatalogGrid>
         )}
       </Container>
     </div>

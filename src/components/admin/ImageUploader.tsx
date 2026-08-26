@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Upload, X, GripVertical } from "lucide-react";
 import { Img } from "@/components/ui/ArtImage";
+import { cn } from "@/lib/utils";
 
 async function uploadFile(file: globalThis.File): Promise<string> {
   const formData = new FormData();
@@ -57,19 +58,25 @@ export function ImageUploader({
         {images.map((url, i) => (
           <div
             key={url + i}
-            draggable
-            onDragStart={() => (dragIndex.current = i)}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => {
-              if (dragIndex.current !== null && dragIndex.current !== i) reorder(dragIndex.current, i);
-              dragIndex.current = null;
-            }}
-            className="group relative h-24 w-24 cursor-move overflow-hidden border border-line bg-paper-dim"
+            draggable={max > 1}
+            onDragStart={max > 1 ? () => (dragIndex.current = i) : undefined}
+            onDragOver={max > 1 ? (e) => e.preventDefault() : undefined}
+            onDrop={
+              max > 1
+                ? () => {
+                    if (dragIndex.current !== null && dragIndex.current !== i) reorder(dragIndex.current, i);
+                    dragIndex.current = null;
+                  }
+                : undefined
+            }
+            className={cn("group relative h-24 w-24 overflow-hidden border border-line bg-paper-dim", max > 1 && "cursor-move")}
           >
             <Img src={url} alt="" />
-            <span className="absolute left-1 top-1 rounded bg-ink/60 p-0.5 text-paper opacity-0 group-hover:opacity-100">
-              <GripVertical size={12} />
-            </span>
+            {max > 1 && (
+              <span className="absolute left-1 top-1 rounded bg-ink/60 p-0.5 text-paper opacity-0 group-hover:opacity-100">
+                <GripVertical size={12} />
+              </span>
+            )}
             <button
               type="button"
               onClick={() => onChange(images.filter((_, idx) => idx !== i))}
@@ -96,7 +103,9 @@ export function ImageUploader({
           </label>
         )}
       </div>
-      <p className="mt-2 text-xs text-ink-soft">JPG, PNG, WEBP, GIF or SVG — up to 8MB. Drag to reorder; the first image is primary.</p>
+      <p className="mt-2 text-xs text-ink-soft">
+        JPG, PNG, WEBP, GIF or SVG — up to 8MB.{max > 1 && " Drag to reorder; the first image is primary."}
+      </p>
     </div>
   );
 }

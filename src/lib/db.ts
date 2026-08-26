@@ -3,7 +3,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 
 declare global {
   // eslint-disable-next-line no-var
-  var __prisma: InstanceType<typeof PrismaClient> | undefined;
+  var __prisma: PrismaClient | undefined;
 }
 
 function createPrismaClient() {

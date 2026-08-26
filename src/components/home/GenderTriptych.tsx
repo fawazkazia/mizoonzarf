@@ -21,27 +21,27 @@ export function GenderTriptych({ categories }: { categories: TriptychCategory[] 
     <section className="border-y border-line bg-ink">
       <div className="grid grid-cols-1 sm:grid-cols-3 sm:divide-x sm:divide-line/20">
         {categories.map((cat) => (
-          <div key={cat.slug} className="img-zoom group relative aspect-[3/4] overflow-hidden">
-            <Img src={cat.imageUrl} alt={cat.name} seedFallback={cat.slug} />
+          <div key={cat.slug} className="img-zoom group relative h-56 overflow-hidden sm:h-64 lg:h-72">
+            <Img src={cat.imageUrl} alt={cat.name} seedFallback={cat.slug} className="object-top" />
             <div className="absolute inset-0 bg-gradient-to-t from-ink/75 via-ink/10 to-transparent" />
             <Link href={`/${cat.slug}`} className="absolute inset-0" aria-label={`Shop ${cat.name}`} />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 p-6 text-paper">
-              <Link href={`/${cat.slug}`} className="pointer-events-auto font-display text-3xl hover:underline">
-                {cat.name}
-              </Link>
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4 text-paper">
               {cat.children.length > 0 && (
-                <div className="pointer-events-auto mt-3 flex flex-col gap-1 lg:opacity-0 lg:transition-opacity lg:duration-[var(--dur-2)] lg:group-hover:opacity-100">
+                <div className="pointer-events-auto absolute inset-x-4 bottom-full mb-2 hidden flex-col gap-1 lg:flex lg:opacity-0 lg:transition-opacity lg:duration-[var(--dur-2)] lg:group-hover:opacity-100">
                   {cat.children.slice(0, 4).map((child) => (
                     <Link
                       key={child.slug}
                       href={`/${cat.slug}?category=${child.slug}`}
-                      className="link-reveal w-fit text-xs uppercase tracking-[0.1em] text-paper/85"
+                      className="link-reveal w-fit text-[11px] uppercase tracking-[0.1em] text-paper/85"
                     >
                       {child.name}
                     </Link>
                   ))}
                 </div>
               )}
+              <Link href={`/${cat.slug}`} className="pointer-events-auto font-display text-xl hover:underline">
+                {cat.name}
+              </Link>
             </div>
           </div>
         ))}

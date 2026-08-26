@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { getSettings } from "@/lib/settings";
-import type { Prisma } from "@/generated/prisma/client";
+import { formatINR } from "@/lib/currency";
+import type { Prisma, ReliabilityStatus } from "@/generated/prisma/client";
 import { Table, Th, Td, EmptyRow } from "@/components/admin/Table";
 import { SearchInput } from "@/components/admin/SearchInput";
+import { StatusFilterSelect } from "@/components/admin/StatusFilterSelect";
 import { Pagination } from "@/components/admin/Pagination";
 import { Badge } from "@/components/ui/Badge";
 
@@ -12,19 +13,31 @@ export const metadata = { title: "Customers" };
 const PER_PAGE = 20;
 const VIP_THRESHOLD = 2000;
 const FREQUENT_ORDER_COUNT = 3;
+const RELIABILITY_STATUSES = ["TRUSTED", "NORMAL", "HIGH_RISK"];
 
 interface PageProps {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; reliability?: string; page?: string }>;
 }
 
 export default async function CustomersPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const page = Number(sp.page ?? 1);
-  const settings = await getSettings();
 
   const where: Prisma.UserWhereInput = { role: "CUSTOMER" };
   if (sp.q) {
     where.OR = [{ name: { contains: sp.q, mode: "insensitive" } }, { email: { contains: sp.q, mode: "insensitive" } }];
+  }
+  if (sp.reliability) {
+    // Effective status is reliabilityOverride ?? reliabilityStatus — match either an explicit
+    // override of this value, or the computed value when no override is set.
+    where.AND = [
+      {
+        OR: [
+          { reliabilityOverride: sp.reliability as ReliabilityStatus },
+          { reliabilityOverride: null, reliabilityStatus: sp.reliability as ReliabilityStatus },
+        ],
+      },
+    ];
   }
 
   const [customers, total] = await Promise.all([
@@ -44,7 +57,10 @@ export default async function CustomersPage({ searchParams }: PageProps) {
     <div className="flex flex-col gap-6">
       <h1 className="font-display text-3xl">Customers</h1>
 
-      <SearchInput placeholder="Search by name or email..." />
+      <div className="flex flex-wrap items-center gap-3">
+        <SearchInput placeholder="Search by name or email..." />
+        <StatusFilterSelect options={RELIABILITY_STATUSES} paramKey="reliability" placeholder="All Reliability" />
+      </div>
 
       <Table>
         <thead>
@@ -53,15 +69,17 @@ export default async function CustomersPage({ searchParams }: PageProps) {
             <Th>Orders</Th>
             <Th>Total Spend</Th>
             <Th>Segment</Th>
+            <Th>Reliability</Th>
             <Th>Joined</Th>
           </tr>
         </thead>
         <tbody>
-          {customers.length === 0 && <EmptyRow colSpan={5}>No customers found.</EmptyRow>}
+          {customers.length === 0 && <EmptyRow colSpan={6}>No customers found.</EmptyRow>}
           {customers.map((c) => {
             const validOrders = c.orders.filter((o) => o.status !== "CANCELLED");
             const spend = validOrders.reduce((sum, o) => sum + Number(o.total), 0);
             const segment = spend >= VIP_THRESHOLD ? "VIP" : validOrders.length >= FREQUENT_ORDER_COUNT ? "Frequent" : isNew(c.createdAt) ? "New" : validOrders.length === 0 ? "Inactive" : "Regular";
+            const reliability = c.reliabilityOverride ?? c.reliabilityStatus;
 
             return (
               <tr key={c.id}>
@@ -72,11 +90,14 @@ export default async function CustomersPage({ searchParams }: PageProps) {
                   </Link>
                 </Td>
                 <Td>{validOrders.length}</Td>
-                <Td>
-                  {settings.currencySymbol} {spend.toFixed(2)}
-                </Td>
+                <Td>{formatINR(spend)}</Td>
                 <Td>
                   <Badge tone={segment === "VIP" ? "gold" : segment === "Inactive" ? "outline" : "ink"}>{segment}</Badge>
+                </Td>
+                <Td>
+                  <Badge tone={reliability === "TRUSTED" ? "success" : reliability === "HIGH_RISK" ? "sale" : "outline"}>
+                    {reliability.replace(/_/g, " ")}
+                  </Badge>
                 </Td>
                 <Td>{c.createdAt.toLocaleDateString()}</Td>
               </tr>
@@ -91,6 +112,7 @@ export default async function CustomersPage({ searchParams }: PageProps) {
         buildHref={(p) => {
           const params = new URLSearchParams();
           if (sp.q) params.set("q", sp.q);
+          if (sp.reliability) params.set("reliability", sp.reliability);
           params.set("page", String(p));
           return `?${params.toString()}`;
         }}

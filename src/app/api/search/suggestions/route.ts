@@ -30,8 +30,42 @@ export async function GET(req: NextRequest) {
     take: 8,
   });
 
+  let allProducts = products;
+
+  // Fuzzy fallback for typos ("jaket" -> "Jacket") — only kicks in when the
+  // exact/contains match came up short. word_similarity (not similarity)
+  // because it scores the query against the best-matching substring of the
+  // (usually multi-word) product name, rather than requiring the whole name
+  // to resemble the query.
+  if (products.length < 4) {
+    const excludeIds = products.map((p) => p.id);
+    const fuzzyIds = await db.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "products"
+      WHERE status = 'ACTIVE'
+        AND word_similarity(${q}, name) > 0.35
+        AND id != ALL(${excludeIds})
+      ORDER BY word_similarity(${q}, name) DESC
+      LIMIT ${8 - products.length}
+    `;
+    if (fuzzyIds.length > 0) {
+      const fuzzyProducts = await db.product.findMany({
+        where: { id: { in: fuzzyIds.map((r) => r.id) } },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          basePrice: true,
+          compareAtPrice: true,
+          images: { where: { isPrimary: true }, take: 1 },
+        },
+      });
+      const byId = new Map(fuzzyProducts.map((p) => [p.id, p]));
+      allProducts = [...products, ...fuzzyIds.map((r) => byId.get(r.id)!).filter(Boolean)];
+    }
+  }
+
   return NextResponse.json({
-    products: products.map((p) => ({
+    products: allProducts.map((p) => ({
       id: p.id,
       name: p.name,
       slug: p.slug,

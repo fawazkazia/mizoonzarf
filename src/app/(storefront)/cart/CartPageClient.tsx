@@ -8,6 +8,7 @@ import { Img } from "@/components/ui/ArtImage";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { useCartStore } from "@/stores/cart-store";
 import { useSettings } from "@/components/SettingsContext";
+import { formatINR } from "@/lib/currency";
 
 export function CartPageClient() {
   const cart = useCartStore();
@@ -70,9 +71,7 @@ export function CartPageClient() {
                       <Plus size={13} />
                     </button>
                   </div>
-                  <span className="font-medium">
-                    {settings.currencySymbol} {((line.salePrice ?? line.price) * line.quantity).toFixed(2)}
-                  </span>
+                  <span className="font-medium">{formatINR((line.salePrice ?? line.price) * line.quantity)}</span>
                 </div>
               </div>
             </li>
@@ -109,25 +108,25 @@ export function CartPageClient() {
         <div className="flex flex-col gap-2.5 text-sm">
           <div className="flex justify-between">
             <span className="text-ink-soft">Subtotal</span>
-            <span>{settings.currencySymbol} {cart.subtotal.toFixed(2)}</span>
+            <span>{formatINR(cart.subtotal)}</span>
           </div>
           {cart.discountAmount > 0 && (
             <div className="flex justify-between text-success">
               <span>Discount</span>
-              <span>-{settings.currencySymbol} {cart.discountAmount.toFixed(2)}</span>
+              <span>-{formatINR(cart.discountAmount)}</span>
             </div>
           )}
           <div className="flex justify-between">
             <span className="text-ink-soft">Shipping</span>
-            <span>{cart.freeShippingApplied ? "Free" : `${settings.currencySymbol} ${cart.shippingFee.toFixed(2)}`}</span>
+            <span>{cart.freeShippingApplied ? "Free" : formatINR(cart.shippingFee)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-ink-soft">VAT ({settings.taxPercent}%)</span>
-            <span>{settings.currencySymbol} {cart.taxAmount.toFixed(2)}</span>
+            <span className="text-ink-soft">GST ({settings.taxPercent}%)</span>
+            <span>{formatINR(cart.taxAmount)}</span>
           </div>
           <div className="mt-2 flex justify-between border-t border-line pt-3 text-base font-medium">
             <span>Total</span>
-            <span>{settings.currencySymbol} {cart.total.toFixed(2)}</span>
+            <span>{formatINR(cart.total)}</span>
           </div>
         </div>
 

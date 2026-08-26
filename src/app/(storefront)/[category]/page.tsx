@@ -99,6 +99,8 @@ async function CatalogResults({
     saleOnly: category === "sale",
     onSale: sp.onSale === "1",
     inStockOnly: sp.inStock === "1",
+    newArrivals: sp.newArrivals === "1",
+    bestSellers: sp.bestSellers === "1",
     minDiscountPercent: sp.discount ? Number(sp.discount) : undefined,
     sizes: toArray(sp.size),
     colors: toArray(sp.color),
@@ -158,12 +160,14 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
 
   return (
     <div>
-      <CategoryHero
-        name={title}
-        description={categoryRecord?.description ?? categoryRecord?.seoDescription}
-        imageUrl={categoryBanner?.imageUrl ?? categoryRecord?.imageUrl ?? null}
-        accent={category === "sale" ? "sale" : "ink"}
-      />
+      {category !== "sale" && (
+        <CategoryHero
+          name={title}
+          description={categoryRecord?.description ?? categoryRecord?.seoDescription}
+          imageUrl={categoryBanner?.imageUrl ?? categoryRecord?.imageUrl ?? null}
+          accent="ink"
+        />
+      )}
 
       {categoryRecord && categoryRecord.children.length > 0 && (
         <SubCategoryStrip

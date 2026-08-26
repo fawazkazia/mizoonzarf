@@ -6,10 +6,46 @@ export interface SiteSettings {
   brandTagline: string;
   currency: string;
   currencySymbol: string;
+  /** Default GST % used when a product has no gstRate override. */
   taxPercent: number;
   taxInclusive: boolean;
   whatsappNumber: string;
   supportEmail: string;
+  gst: {
+    sellerGstin: string;
+    /** Business's registered state — compared to the shipping address state to decide CGST+SGST vs IGST. */
+    sellerState: string;
+    sellerLegalName: string;
+    sellerAddress: string;
+  };
+  /** Admin-editable legal copy for pages that have no other content source. */
+  legal: {
+    cancellationPolicy: string;
+  };
+  /** The two full-width promo strips rendered site-wide just below the header. */
+  promoStrips: {
+    codeBanner: {
+      enabled: boolean;
+      headline: string;
+      codeText: string;
+      link: string;
+      bgColor: string;
+      accentColor: string;
+      /** Optional photo behind the banner — falls back to bgColor when unset. */
+      imageUrl: string | null;
+    };
+    brandsBanner: {
+      enabled: boolean;
+      tagline: string;
+      link: string;
+      gradientFrom: string;
+      gradientVia: string;
+      gradientTo: string;
+      /** Optional photo behind the banner — falls back to the gradient when unset. */
+      imageUrl: string | null;
+      features: { icon: "bag" | "truck" | "gift"; lines: string[] }[];
+    };
+  };
   socialLinks: {
     instagram?: string;
     facebook?: string;
@@ -22,6 +58,7 @@ export interface SiteSettings {
     freeShippingThreshold: number;
     standardDays: string;
     expressDays: string;
+    processingDays: number;
   };
   footer: {
     about: string;
@@ -32,7 +69,8 @@ export interface SiteSettings {
     showFreeShipping: boolean;
     supportPhone: string;
     countryLabel: string;
-    countryFlag: string;
+    /** ISO 3166-1 alpha-2 code (e.g. "AE") used to look up the flag icon. */
+    countryCode: string;
   };
   branding: {
     logoUrl: string;
@@ -47,19 +85,71 @@ export interface SiteSettings {
    */
   currencyDisplay: {
     enabled: boolean;
-    options: { code: string; symbol: string; rate: number }[];
+    /** `country` is the ISO 3166-1 alpha-2 code (or "EU") used to look up that option's flag icon. */
+    options: { code: string; symbol: string; rate: number; country: string; countryLabel: string }[];
+  };
+  /** Admin-configurable COD availability + fraud-risk gating — enforced server-side in /api/checkout. */
+  codRisk: {
+    /** COD is refused above this order total regardless of risk level. */
+    maxCodOrderValue: number;
+    /** Once a customer has this many COD orders (last 90 days), further orders must be prepaid. */
+    maxCodOrdersPerCustomer: number;
+    /** Feeds the "high-value COD, thin delivery history" risk signal. */
+    highValueCodThreshold: number;
+    /** If false, HIGH risk customers can't select COD at all. */
+    allowHighRiskCod: boolean;
+    /** If true (and allowHighRiskCod is true), HIGH risk COD orders require a COD-confirmation OTP before they're accepted. */
+    requireConfirmOnHighRiskCod: boolean;
   };
 }
 
 const DEFAULT_SETTINGS: SiteSettings = {
   brandName: "MAISON LUXE",
   brandTagline: "Fashion for Every Moment",
-  currency: "AED",
-  currencySymbol: "AED",
-  taxPercent: 5,
-  taxInclusive: false,
-  whatsappNumber: "971500000000",
+  currency: "INR",
+  currencySymbol: "₹",
+  taxPercent: 18,
+  taxInclusive: true,
+  whatsappNumber: "919500000000",
   supportEmail: "care@maisonluxe.com",
+  gst: {
+    sellerGstin: "",
+    sellerState: "",
+    sellerLegalName: "",
+    sellerAddress: "",
+  },
+  legal: {
+    cancellationPolicy:
+      "[PLACEHOLDER — replace with your registered cancellation policy]\n\n" +
+      "You can cancel an order for free any time before it has been packed for shipping — go to Order History and select Cancel Order, " +
+      "or contact us and we'll cancel it for you. Once an order has shipped, it can no longer be cancelled; you're welcome to refuse " +
+      "delivery or request a return instead. Refunds for cancelled orders are credited to the original payment method within 5-7 business days.",
+  },
+  promoStrips: {
+    codeBanner: {
+      enabled: true,
+      headline: "Extra 15% Off",
+      codeText: "Use Code : WEB15",
+      link: "/sale",
+      bgColor: "#3a3a3a",
+      accentColor: "#e3d94a",
+      imageUrl: null,
+    },
+    brandsBanner: {
+      enabled: true,
+      tagline: "Your favourite brands, now at your fingertips",
+      link: "/brands",
+      gradientFrom: "#e8967d",
+      gradientVia: "#9a4160",
+      gradientTo: "#3c1626",
+      imageUrl: null,
+      features: [
+        { icon: "bag", lines: ["100s of brands.", "100% genuine."] },
+        { icon: "truck", lines: ["Price assurance", "and on-time delivery"] },
+        { icon: "gift", lines: ["Welcome gift:", "15% off with APP15", "+ ₹15 wallet credit"] },
+      ],
+    },
+  },
   socialLinks: {
     instagram: "https://instagram.com",
     facebook: "https://facebook.com",
@@ -67,36 +157,43 @@ const DEFAULT_SETTINGS: SiteSettings = {
     x: "https://x.com",
   },
   shipping: {
-    standardFee: 15,
-    expressFee: 35,
-    freeShippingThreshold: 250,
+    standardFee: 99,
+    expressFee: 249,
+    freeShippingThreshold: 1999,
     standardDays: "3-5 business days",
     expressDays: "1-2 business days",
+    processingDays: 1,
   },
   footer: {
-    about:
-      "Maison Luxe curates premium fashion, fragrance and jewellery for men, women and children across the region.",
-    contactAddress: "Sheikh Zayed Road, Dubai, United Arab Emirates",
+    about: "Maison Luxe curates premium fashion, fragrance and jewellery for men, women and children across India.",
+    contactAddress: "[PLACEHOLDER — add your registered business address]",
   },
   header: {
-    promoMessages: ["Free delivery on orders over {threshold}", "New season arrivals are here"],
+    promoMessages: ["New season arrivals are here", "Cash on Delivery available across India"],
     showFreeShipping: true,
-    supportPhone: "+971 4 000 0000",
-    countryLabel: "United Arab Emirates",
-    countryFlag: "🇦🇪",
+    supportPhone: "+91 00000 00000",
+    countryLabel: "India",
+    countryCode: "IN",
   },
   branding: {
-    logoUrl: "",
+    logoUrl: "/images/logo.png",
     faviconUrl: "",
   },
   currencyDisplay: {
     enabled: true,
     options: [
-      { code: "USD", symbol: "$", rate: 0.2723 },
-      { code: "EUR", symbol: "€", rate: 0.2517 },
-      { code: "GBP", symbol: "£", rate: 0.2163 },
-      { code: "SAR", symbol: "SAR", rate: 1.0225 },
+      { code: "USD", symbol: "$", rate: 0.012, country: "US", countryLabel: "United States" },
+      { code: "EUR", symbol: "€", rate: 0.011, country: "EU", countryLabel: "Eurozone" },
+      { code: "GBP", symbol: "£", rate: 0.0095, country: "GB", countryLabel: "United Kingdom" },
+      { code: "AED", symbol: "AED", rate: 0.044, country: "AE", countryLabel: "United Arab Emirates" },
     ],
+  },
+  codRisk: {
+    maxCodOrderValue: 15000,
+    maxCodOrdersPerCustomer: 10,
+    highValueCodThreshold: 3000,
+    allowHighRiskCod: true,
+    requireConfirmOnHighRiskCod: true,
   },
 };
 
@@ -112,11 +209,18 @@ export const getSettings = cache(async (): Promise<SiteSettings> => {
   return {
     ...DEFAULT_SETTINGS,
     ...overrides,
+    gst: { ...DEFAULT_SETTINGS.gst, ...(overrides.gst as object) },
+    legal: { ...DEFAULT_SETTINGS.legal, ...(overrides.legal as object) },
+    promoStrips: {
+      codeBanner: { ...DEFAULT_SETTINGS.promoStrips.codeBanner, ...((overrides.promoStrips as { codeBanner?: object })?.codeBanner ?? {}) },
+      brandsBanner: { ...DEFAULT_SETTINGS.promoStrips.brandsBanner, ...((overrides.promoStrips as { brandsBanner?: object })?.brandsBanner ?? {}) },
+    },
     socialLinks: { ...DEFAULT_SETTINGS.socialLinks, ...(overrides.socialLinks as object) },
     shipping: { ...DEFAULT_SETTINGS.shipping, ...(overrides.shipping as object) },
     footer: { ...DEFAULT_SETTINGS.footer, ...(overrides.footer as object) },
     header: { ...DEFAULT_SETTINGS.header, ...(overrides.header as object) },
     branding: { ...DEFAULT_SETTINGS.branding, ...(overrides.branding as object) },
     currencyDisplay: { ...DEFAULT_SETTINGS.currencyDisplay, ...(overrides.currencyDisplay as object) },
+    codRisk: { ...DEFAULT_SETTINGS.codRisk, ...(overrides.codRisk as object) },
   } as SiteSettings;
 });

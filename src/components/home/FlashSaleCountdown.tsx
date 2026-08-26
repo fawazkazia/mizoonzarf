@@ -61,7 +61,7 @@ export function FlashSaleCountdown({
 
   return (
     <section className="bg-ink text-paper">
-      <Container className={variant === "compact" ? "py-10" : "py-16 sm:py-20"}>
+      <Container className={variant === "compact" ? "py-8" : "py-10 sm:py-12"}>
         <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:justify-between sm:text-left">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-sale">{discountLabel}</p>
@@ -80,18 +80,18 @@ export function FlashSaleCountdown({
       </Container>
 
       {variant === "default" && (
-        <div className="bg-paper py-10 sm:py-12">
+        <div className="bg-paper py-8 sm:py-10">
           <Container>
             <ScrollRail>
               {products.map((p) => (
-                <ProductCard key={p.id} product={p} className="w-[62%] shrink-0 snap-start sm:w-[38%] lg:w-[23%]" />
+                <ProductCard key={p.id} product={p} className="w-44 shrink-0 snap-start sm:w-52 lg:w-60" />
               ))}
             </ScrollRail>
           </Container>
         </div>
       )}
 
-      <Container className="flex justify-center py-10">
+      <Container className="flex justify-center py-8">
         <ButtonLink href="/sale" className="!bg-paper !text-ink hover:!bg-gold hover:!text-paper">
           Shop the Sale
         </ButtonLink>

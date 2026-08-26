@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { getSettings } from "@/lib/settings";
-import type { Prisma, OrderStatus } from "@/generated/prisma/client";
+import { formatINR } from "@/lib/currency";
+import type { Prisma, OrderStatus, RiskLevel } from "@/generated/prisma/client";
 import { Table, Th, Td, EmptyRow } from "@/components/admin/Table";
 import { SearchInput } from "@/components/admin/SearchInput";
 import { StatusFilterSelect } from "@/components/admin/StatusFilterSelect";
@@ -25,14 +25,15 @@ const STATUSES: OrderStatus[] = [
   "REFUNDED",
 ];
 
+const RISK_LEVELS = ["LOW", "NORMAL", "HIGH"];
+
 interface PageProps {
-  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; risk?: string; page?: string }>;
 }
 
 export default async function OrdersPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const page = Number(sp.page ?? 1);
-  const settings = await getSettings();
 
   const where: Prisma.OrderWhereInput = {};
   if (sp.q) {
@@ -43,6 +44,7 @@ export default async function OrdersPage({ searchParams }: PageProps) {
     ];
   }
   if (sp.status) where.status = sp.status as OrderStatus;
+  if (sp.risk) where.riskLevel = sp.risk as RiskLevel;
 
   const [orders, total] = await Promise.all([
     db.order.findMany({
@@ -62,6 +64,7 @@ export default async function OrdersPage({ searchParams }: PageProps) {
       <div className="flex flex-wrap items-center gap-3">
         <SearchInput placeholder="Search order # or email..." />
         <StatusFilterSelect options={STATUSES} />
+        <StatusFilterSelect options={RISK_LEVELS} paramKey="risk" placeholder="All Risk Levels" />
       </div>
 
       <Table>
@@ -72,12 +75,13 @@ export default async function OrdersPage({ searchParams }: PageProps) {
             <Th>Items</Th>
             <Th>Status</Th>
             <Th>Payment</Th>
+            <Th>Risk</Th>
             <Th className="text-right">Total</Th>
             <Th>Date</Th>
           </tr>
         </thead>
         <tbody>
-          {orders.length === 0 && <EmptyRow colSpan={7}>No orders found.</EmptyRow>}
+          {orders.length === 0 && <EmptyRow colSpan={8}>No orders found.</EmptyRow>}
           {orders.map((o) => (
             <tr key={o.id}>
               <Td>
@@ -95,9 +99,10 @@ export default async function OrdersPage({ searchParams }: PageProps) {
               <Td>
                 <Badge tone={o.paymentStatus === "PAID" ? "success" : "outline"}>{o.paymentStatus}</Badge>
               </Td>
-              <Td className="text-right">
-                {settings.currencySymbol} {Number(o.total).toFixed(2)}
+              <Td>
+                <Badge tone={o.riskLevel === "HIGH" ? "sale" : o.riskLevel === "LOW" ? "success" : "outline"}>{o.riskLevel}</Badge>
               </Td>
+              <Td className="text-right">{formatINR(Number(o.total))}</Td>
               <Td>{o.createdAt.toLocaleDateString()}</Td>
             </tr>
           ))}
@@ -111,6 +116,7 @@ export default async function OrdersPage({ searchParams }: PageProps) {
           const params = new URLSearchParams();
           if (sp.q) params.set("q", sp.q);
           if (sp.status) params.set("status", sp.status);
+          if (sp.risk) params.set("risk", sp.risk);
           params.set("page", String(p));
           return `?${params.toString()}`;
         }}

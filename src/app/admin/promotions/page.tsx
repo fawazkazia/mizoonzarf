@@ -28,10 +28,14 @@ export default async function PromotionsPage() {
             discountValue: Number(c.discountValue),
             usageCount: c.usageCount,
             usageLimit: c.usageLimit,
+            categorySlugs: c.categorySlugs,
+            productIds: c.productIds,
+            customerIds: c.customerIds,
             startDate: c.startDate.toISOString(),
             endDate: c.endDate.toISOString(),
             isActive: c.isActive,
           }))}
+          categoryOptions={categories}
         />
       </div>
 

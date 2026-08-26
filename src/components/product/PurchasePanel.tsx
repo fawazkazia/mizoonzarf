@@ -81,12 +81,12 @@ export function PurchasePanel({
   )}`;
 
   return (
-    <div className="flex flex-col gap-6">
-      <Price price={variant.salePrice ?? variant.price} compareAt={variant.salePrice ? variant.price : null} currency={settings.currencySymbol} size="lg" />
+    <div className="flex flex-col gap-3">
+      <Price price={variant.salePrice ?? variant.price} compareAt={variant.salePrice ? variant.price : null} currency={settings.currency} size="md" />
 
       {sizes.length > 0 && (
         <div>
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-1.5 flex items-center justify-between">
             <p className="text-xs uppercase tracking-[0.12em] text-ink-soft">Size</p>
             {sizeGuide && (
               <button onClick={() => setSizeGuideOpen(true)} className="link-reveal text-xs uppercase tracking-[0.1em] text-ink-soft">
@@ -94,12 +94,12 @@ export function PurchasePanel({
               </button>
             )}
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {sizes.map((s) => (
               <button
                 key={s}
                 onClick={() => setSize(s)}
-                className={`h-10 min-w-10 border px-3 text-sm ${size === s ? "border-ink bg-ink text-paper" : "border-line hover:border-ink"}`}
+                className={`h-9 min-w-9 border px-2.5 text-sm ${size === s ? "border-ink bg-ink text-paper" : "border-line hover:border-ink"}`}
               >
                 {s}
               </button>
@@ -110,15 +110,15 @@ export function PurchasePanel({
 
       {colors.length > 0 && (
         <div>
-          <p className="mb-2 text-xs uppercase tracking-[0.12em] text-ink-soft">Colour {color && `— ${color}`}</p>
-          <div className="flex flex-wrap gap-2">
+          <p className="mb-1.5 text-xs uppercase tracking-[0.12em] text-ink-soft">Colour {color && `— ${color}`}</p>
+          <div className="flex flex-wrap gap-1.5">
             {colors.map(([name, hex]) => (
               <button
                 key={name}
                 onClick={() => setColor(name)}
                 title={name}
                 style={{ backgroundColor: hex ?? undefined }}
-                className={`h-9 w-9 rounded-full border-2 ${color === name ? "border-ink" : "border-transparent"}`}
+                className={`h-8 w-8 rounded-full border-2 ${color === name ? "border-ink" : "border-transparent"}`}
               >
                 {!hex && <span className="sr-only">{name}</span>}
               </button>
@@ -128,38 +128,38 @@ export function PurchasePanel({
       )}
 
       <div>
-        <p className="mb-2 text-xs uppercase tracking-[0.12em] text-ink-soft">Quantity</p>
+        <p className="mb-1.5 text-xs uppercase tracking-[0.12em] text-ink-soft">Quantity</p>
         <div className="flex w-fit items-center border border-line">
-          <button className="px-3 py-2" onClick={() => setQuantity((q) => Math.max(1, q - 1))} aria-label="Decrease quantity">
-            <Minus size={14} />
+          <button className="px-2.5 py-1.5" onClick={() => setQuantity((q) => Math.max(1, q - 1))} aria-label="Decrease quantity">
+            <Minus size={13} />
           </button>
-          <span className="w-8 text-center text-sm">{quantity}</span>
+          <span className="w-7 text-center text-sm">{quantity}</span>
           <button
-            className="px-3 py-2"
+            className="px-2.5 py-1.5"
             onClick={() => setQuantity((q) => Math.min(variant.stock, q + 1))}
             disabled={quantity >= variant.stock}
             aria-label="Increase quantity"
           >
-            <Plus size={14} />
+            <Plus size={13} />
           </button>
         </div>
-        <p className="mt-2 text-xs text-ink-soft">
+        <p className="mt-1.5 text-xs text-ink-soft">
           {variant.stock === 0 ? "Out of stock" : variant.stock <= 5 ? `Only ${variant.stock} left in stock` : "In stock"}
         </p>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <Button size="lg" disabled={variant.stock === 0} onClick={() => handleAdd(false)}>
+      <div className="flex flex-col gap-2">
+        <Button size="md" disabled={variant.stock === 0} onClick={() => handleAdd(false)}>
           Add to Cart
         </Button>
         {!compact && (
-          <Button size="lg" variant="secondary" disabled={variant.stock === 0} onClick={() => handleAdd(true)}>
+          <Button size="md" variant="secondary" disabled={variant.stock === 0} onClick={() => handleAdd(true)}>
             Buy Now
           </Button>
         )}
       </div>
 
-      <div className="flex items-center gap-6 text-xs uppercase tracking-[0.1em] text-ink-soft">
+      <div className="flex items-center gap-5 text-xs uppercase tracking-[0.1em] text-ink-soft">
         <button onClick={() => toggleWishlist(productId)} className="flex items-center gap-1.5 hover:text-ink">
           <Heart size={15} className={isWishlisted ? "fill-sale text-sale" : ""} /> Wishlist
         </button>

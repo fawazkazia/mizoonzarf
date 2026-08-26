@@ -14,7 +14,7 @@ interface DisplayCurrencyState {
  * read by cart/checkout/orders. `skipHydration: true` avoids an SSR/client
  * mismatch; rehydrated once in AppProviders (many components read this
  * store, so centralizing the rehydrate call avoids depending on mount order
- * between them and CurrencySwitcher, the one place it's written from).
+ * between them and CountrySwitcher, the one place it's written from).
  */
 export const useDisplayCurrencyStore = create<DisplayCurrencyState>()(
   persist(

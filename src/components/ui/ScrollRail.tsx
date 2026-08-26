@@ -47,8 +47,8 @@ export function ScrollRail({ children, className, trackClassName, showArrows = t
   }
 
   return (
-    <div className={cn("relative", className)}>
-      <div ref={trackRef} className={cn("no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth", trackClassName)}>
+    <div className={cn("relative min-w-0", className)}>
+      <div ref={trackRef} className={cn("no-scrollbar flex min-w-0 snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth", trackClassName)}>
         {children}
       </div>
       {showArrows && (

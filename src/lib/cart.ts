@@ -1,9 +1,12 @@
 import type { SiteSettings } from "@/lib/settings";
+import { formatINR } from "@/lib/currency";
 
 export interface PricedLine {
   price: number;
   salePrice: number | null;
   quantity: number;
+  /** Effective GST % for this line — caller resolves product.gstRate ?? settings.taxPercent. */
+  gstRate: number;
 }
 
 export interface AppliedCoupon {
@@ -26,16 +29,27 @@ export interface CartTotals {
   discountAmount: number;
   shippingFee: number;
   taxAmount: number;
+  cgstAmount: number;
+  sgstAmount: number;
+  igstAmount: number;
   total: number;
   freeShippingApplied: boolean;
   couponError?: string;
 }
 
+/**
+ * GST is computed per line (lines can carry different rates), summed, then
+ * split once at the order level into CGST+SGST (same state as the seller)
+ * or IGST (different state) — GST law taxes each line at its own rate on
+ * its own (discounted) value, so the coupon discount is prorated per line
+ * rather than applied as one blended deduction before tax.
+ */
 export function calculateTotals(
   lines: PricedLine[],
   settings: SiteSettings,
   coupon: AppliedCoupon | null,
-  deliveryMethod: "standard" | "express" = "standard"
+  deliveryMethod: "standard" | "express" = "standard",
+  shippingState: string | null = null
 ): CartTotals {
   const subtotal = round2(lines.reduce((sum, l) => sum + lineSubtotal(l), 0));
 
@@ -57,10 +71,32 @@ export function calculateTotals(
   }
 
   discountAmount = round2(discountAmount);
+  const discountRatio = subtotal > 0 ? discountAmount / subtotal : 0;
+
+  let totalGstAmount = 0;
+  for (const line of lines) {
+    const lineTaxable = Math.max(lineSubtotal(line) * (1 - discountRatio), 0);
+    totalGstAmount += taxFor(lineTaxable, line.gstRate, settings.taxInclusive);
+  }
+  totalGstAmount = round2(totalGstAmount);
 
   const shippingFee = freeShippingFromCoupon ? 0 : shippingFeeFor(subtotal, settings, deliveryMethod);
   const taxableAmount = Math.max(subtotal - discountAmount, 0);
-  const taxAmount = taxFor(taxableAmount, settings);
+
+  const isIntraState = Boolean(
+    shippingState && settings.gst.sellerState && normalizeState(shippingState) === normalizeState(settings.gst.sellerState)
+  );
+  let cgstAmount = 0;
+  let sgstAmount = 0;
+  let igstAmount = 0;
+  if (isIntraState) {
+    cgstAmount = round2(totalGstAmount / 2);
+    sgstAmount = round2(totalGstAmount - cgstAmount);
+  } else {
+    igstAmount = totalGstAmount;
+  }
+  const taxAmount = round2(cgstAmount + sgstAmount + igstAmount);
+
   const total = round2(settings.taxInclusive ? taxableAmount + shippingFee : taxableAmount + shippingFee + taxAmount);
 
   return {
@@ -68,10 +104,17 @@ export function calculateTotals(
     discountAmount,
     shippingFee,
     taxAmount,
+    cgstAmount,
+    sgstAmount,
+    igstAmount,
     total,
     freeShippingApplied: shippingFee === 0,
     couponError,
   };
+}
+
+function normalizeState(state: string): string {
+  return state.trim().toUpperCase();
 }
 
 function shippingFeeFor(subtotal: number, settings: SiteSettings, deliveryMethod: "standard" | "express"): number {
@@ -80,17 +123,17 @@ function shippingFeeFor(subtotal: number, settings: SiteSettings, deliveryMethod
   return settings.shipping.standardFee;
 }
 
-function taxFor(amount: number, settings: SiteSettings): number {
-  if (settings.taxInclusive) return round2((amount * settings.taxPercent) / (100 + settings.taxPercent));
-  return round2(amount * (settings.taxPercent / 100));
+function taxFor(amount: number, gstRate: number, taxInclusive: boolean): number {
+  if (taxInclusive) return round2((amount * gstRate) / (100 + gstRate));
+  return round2(amount * (gstRate / 100));
 }
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-export function formatMoney(amount: number, settings: Pick<SiteSettings, "currencySymbol">): string {
-  return `${settings.currencySymbol} ${amount.toFixed(2)}`;
+export function formatMoney(amount: number): string {
+  return formatINR(amount);
 }
 
 export function generateOrderNumber(): string {

@@ -1,9 +1,10 @@
 import { db } from "@/lib/db";
+import { getAbandonedCarts } from "./abandoned-carts";
 
 export async function getDashboardStats() {
   const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
 
-  const [revenueAgg, orderCount, customerCount, productCount, lowStockRows, recentOrders, statusGroups, lowStockVariants] =
+  const [revenueAgg, orderCount, customerCount, productCount, lowStockRows, recentOrders, statusGroups, lowStockVariantRows, abandonedCarts, pendingReturnsCount] =
     await Promise.all([
       db.order.aggregate({ where: { status: { not: "CANCELLED" } }, _sum: { total: true } }),
       db.order.count({ where: { status: { not: "CANCELLED" } } }),
@@ -12,12 +13,18 @@ export async function getDashboardStats() {
       db.$queryRaw<{ count: bigint }[]>`SELECT COUNT(*)::bigint as count FROM "product_variants" WHERE stock <= "lowStockThreshold"`,
       db.order.findMany({ orderBy: { createdAt: "desc" }, take: 8, select: { id: true, orderNumber: true, total: true, status: true, createdAt: true, guestEmail: true, user: { select: { name: true, email: true } } } }),
       db.order.groupBy({ by: ["status"], _count: true }),
-      db.productVariant.findMany({
-        where: { stock: { lte: 5 } },
-        orderBy: { stock: "asc" },
-        take: 8,
-        select: { id: true, sku: true, stock: true, lowStockThreshold: true, size: true, color: true, product: { select: { name: true, slug: true } } },
-      }),
+      db.$queryRaw<
+        { id: string; sku: string; stock: number; lowStockThreshold: number; size: string | null; color: string | null; productName: string; productSlug: string }[]
+      >`
+        SELECT pv.id, pv.sku, pv.stock, pv."lowStockThreshold", pv.size, pv.color, p.name as "productName", p.slug as "productSlug"
+        FROM "product_variants" pv
+        JOIN "products" p ON p.id = pv."productId"
+        WHERE pv.stock <= pv."lowStockThreshold"
+        ORDER BY pv.stock ASC
+        LIMIT 8
+      `,
+      getAbandonedCarts(),
+      db.return.count({ where: { status: { in: ["REQUESTED", "APPROVED", "PICKUP", "RECEIVED", "REFUND_PROCESSING"] } } }),
     ]);
 
   const ordersInWindow = await db.order.findMany({
@@ -44,6 +51,8 @@ export async function getDashboardStats() {
     customerCount,
     productCount,
     lowStockCount,
+    abandonedCartCount: abandonedCarts.length,
+    pendingReturnsCount,
     avgOrderValue: orderCount > 0 ? revenue / orderCount : 0,
     revenueTrend: Array.from(revenueByDay.entries()).map(([date, total]) => ({ date: date.slice(5), total })),
     ordersByStatus: statusGroups.map((g) => ({ status: g.status.replace(/_/g, " "), count: g._count })),
@@ -55,13 +64,13 @@ export async function getDashboardStats() {
       createdAt: o.createdAt,
       customer: o.user?.name ?? o.user?.email ?? o.guestEmail ?? "Guest",
     })),
-    lowStockVariants: lowStockVariants.map((v) => ({
+    lowStockVariants: lowStockVariantRows.map((v) => ({
       id: v.id,
       sku: v.sku,
       stock: v.stock,
       threshold: v.lowStockThreshold,
-      productName: v.product.name,
-      productSlug: v.product.slug,
+      productName: v.productName,
+      productSlug: v.productSlug,
       label: [v.size, v.color].filter(Boolean).join(" / "),
     })),
   };

@@ -1,10 +1,13 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { getSettings } from "@/lib/settings";
+import { formatINR } from "@/lib/currency";
 import { OrderStatusUpdater } from "./OrderStatusUpdater";
+import { OrderSecurityPanel } from "./OrderSecurityPanel";
+import { ShiprocketPanel } from "./ShiprocketPanel";
 import { OrderTimeline } from "@/components/account/OrderTimeline";
 import { ButtonLink } from "@/components/ui/Button";
+import { getShippingProviderSettings } from "@/lib/shipping/settings";
 
 export const metadata = { title: "Order Detail" };
 
@@ -14,20 +17,21 @@ interface PageProps {
 
 export default async function AdminOrderDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const [order, settings] = await Promise.all([
+  const [order, shippingSettings] = await Promise.all([
     db.order.findUnique({
       where: { id },
       include: {
         items: true,
         user: { select: { id: true, name: true, email: true } },
-        shipment: true,
+        shipment: { include: { events: { orderBy: { occurredAt: "desc" } } } },
         statusHistory: { orderBy: { createdAt: "desc" } },
       },
     }),
-    getSettings(),
+    getShippingProviderSettings(),
   ]);
 
   if (!order) notFound();
+  const isShiprocketActive = shippingSettings.activeProvider === "SHIPROCKET";
 
   const address = order.shippingAddress as { fullName: string; phone: string; line1: string; line2?: string; city: string; country: string };
 
@@ -38,9 +42,14 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
           <h1 className="font-display text-3xl">Order {order.orderNumber}</h1>
           <p className="text-sm text-ink-soft">Placed {order.createdAt.toLocaleString()}</p>
         </div>
-        <ButtonLink href={`/admin/orders/${order.id}/invoice`} variant="secondary" target="_blank" rel="noopener">
-          View Invoice
-        </ButtonLink>
+        <div className="flex gap-3">
+          <ButtonLink href={`/admin/orders/${order.id}/pack`} variant="secondary">
+            Pack Order
+          </ButtonLink>
+          <ButtonLink href={`/admin/orders/${order.id}/invoice`} variant="secondary" target="_blank" rel="noopener">
+            View Invoice
+          </ButtonLink>
+        </div>
       </div>
 
       <OrderTimeline status={order.status} />
@@ -55,42 +64,44 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
                   <span>
                     {item.productName} {item.variantLabel && `(${item.variantLabel})`} × {item.quantity}
                   </span>
-                  <span>
-                    {settings.currencySymbol} {Number(item.subtotal).toFixed(2)}
-                  </span>
+                  <span>{formatINR(Number(item.subtotal))}</span>
                 </li>
               ))}
             </ul>
             <div className="mt-4 flex flex-col gap-1.5 border-t border-line pt-4 text-sm">
               <div className="flex justify-between text-ink-soft">
                 <span>Subtotal</span>
-                <span>
-                  {settings.currencySymbol} {Number(order.subtotal).toFixed(2)}
-                </span>
+                <span>{formatINR(Number(order.subtotal))}</span>
               </div>
               <div className="flex justify-between text-ink-soft">
                 <span>Discount</span>
-                <span>
-                  -{settings.currencySymbol} {Number(order.discountAmount).toFixed(2)}
-                </span>
+                <span>-{formatINR(Number(order.discountAmount))}</span>
               </div>
               <div className="flex justify-between text-ink-soft">
                 <span>Shipping</span>
-                <span>
-                  {settings.currencySymbol} {Number(order.shippingFee).toFixed(2)}
-                </span>
+                <span>{formatINR(Number(order.shippingFee))}</span>
               </div>
-              <div className="flex justify-between text-ink-soft">
-                <span>VAT</span>
-                <span>
-                  {settings.currencySymbol} {Number(order.taxAmount).toFixed(2)}
-                </span>
-              </div>
+              {Number(order.cgstAmount) > 0 && (
+                <>
+                  <div className="flex justify-between text-ink-soft">
+                    <span>CGST</span>
+                    <span>{formatINR(Number(order.cgstAmount))}</span>
+                  </div>
+                  <div className="flex justify-between text-ink-soft">
+                    <span>SGST</span>
+                    <span>{formatINR(Number(order.sgstAmount))}</span>
+                  </div>
+                </>
+              )}
+              {Number(order.igstAmount) > 0 && (
+                <div className="flex justify-between text-ink-soft">
+                  <span>IGST</span>
+                  <span>{formatINR(Number(order.igstAmount))}</span>
+                </div>
+              )}
               <div className="flex justify-between border-t border-line pt-2 font-medium">
                 <span>Total</span>
-                <span>
-                  {settings.currencySymbol} {Number(order.total).toFixed(2)}
-                </span>
+                <span>{formatINR(Number(order.total))}</span>
               </div>
             </div>
           </div>
@@ -137,16 +148,52 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
           </div>
         </div>
 
-        <OrderStatusUpdater
-          orderId={order.id}
-          currentStatus={order.status}
-          currentPaymentStatus={order.paymentStatus}
-          shipment={{
-            carrier: order.shipment?.carrier ?? "",
-            trackingNumber: order.shipment?.trackingNumber ?? "",
-            estimatedDelivery: order.shipment?.estimatedDelivery ? order.shipment.estimatedDelivery.toISOString().slice(0, 10) : "",
-          }}
-        />
+        <div className="flex flex-col gap-6">
+          <OrderSecurityPanel
+            riskLevel={order.riskLevel}
+            riskReasons={order.riskReasons}
+            phone={address.phone ?? null}
+            phoneVerified={order.phoneVerified}
+            paymentMethod={order.paymentMethod}
+            codConfirmedAt={order.codConfirmedAt}
+          />
+          <OrderStatusUpdater
+            orderId={order.id}
+            currentStatus={order.status}
+            currentPaymentStatus={order.paymentStatus}
+            paymentMethod={order.paymentMethod}
+            shipment={{
+              carrier: order.shipment?.carrier ?? "",
+              trackingNumber: order.shipment?.trackingNumber ?? "",
+              estimatedDelivery: order.shipment?.estimatedDelivery ? order.shipment.estimatedDelivery.toISOString().slice(0, 10) : "",
+            }}
+          />
+          {isShiprocketActive && (
+            <ShiprocketPanel
+              orderId={order.id}
+              orderNumber={order.orderNumber}
+              paymentStatus={order.paymentStatus}
+              shipment={
+                order.shipment
+                  ? {
+                      shiprocketOrderId: order.shipment.shiprocketOrderId,
+                      shiprocketShipmentId: order.shipment.shiprocketShipmentId,
+                      awbCode: order.shipment.awbCode,
+                      courierName: order.shipment.courierName,
+                      labelUrl: order.shipment.labelUrl,
+                      pickupStatus: order.shipment.pickupStatus,
+                      pickupScheduledAt: order.shipment.pickupScheduledAt ? order.shipment.pickupScheduledAt.toISOString() : null,
+                      trackingStatus: order.shipment.trackingStatus,
+                      deliveryException: order.shipment.deliveryException,
+                      errorMessage: order.shipment.errorMessage,
+                      lastApiStatus: order.shipment.lastApiStatus,
+                    }
+                  : null
+              }
+              events={(order.shipment?.events ?? []).map((e) => ({ status: e.status, occurredAt: e.occurredAt.toISOString(), location: e.location, activity: e.activity }))}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

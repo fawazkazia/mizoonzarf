@@ -33,6 +33,8 @@ export const productInputSchema = z.object({
   fragranceBaseNotes: z.string().optional(),
   concentration: z.string().optional(),
   tags: z.string().optional(),
+  gstRate: z.coerce.number().min(0).max(100).optional().nullable(),
+  hsnCode: z.string().optional(),
   status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED"]),
   isFeatured: z.boolean().default(false),
   seoTitle: z.string().optional(),

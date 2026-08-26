@@ -1,17 +1,14 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getSettings } from "@/lib/settings";
+import { formatINR } from "@/lib/currency";
 import { Badge } from "@/components/ui/Badge";
 
 export const metadata = { title: "My Orders" };
 
 export default async function OrdersPage() {
   const session = await auth();
-  const [orders, settings] = await Promise.all([
-    db.order.findMany({ where: { userId: session!.user.id }, orderBy: { createdAt: "desc" }, include: { items: true } }),
-    getSettings(),
-  ]);
+  const orders = await db.order.findMany({ where: { userId: session!.user.id }, orderBy: { createdAt: "desc" }, include: { items: true } });
 
   return (
     <div>
@@ -30,9 +27,7 @@ export default async function OrdersPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium">
-                    {settings.currencySymbol} {Number(order.total).toFixed(2)}
-                  </span>
+                  <span className="text-sm font-medium">{formatINR(Number(order.total))}</span>
                   <Badge tone={order.status === "DELIVERED" ? "success" : order.status === "CANCELLED" ? "sale" : "ink"}>
                     {order.status.replace(/_/g, " ")}
                   </Badge>

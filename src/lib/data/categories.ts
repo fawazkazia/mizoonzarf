@@ -26,6 +26,20 @@ export async function getAllCategorySlugs() {
   return categories.map((c) => c.slug);
 }
 
+/** Brands with at least one product in this category or one of its children — powers the mega menu's "Shop by Brand" column. */
+export async function getCategoryBrands(categoryId: string, childIds: string[] = []) {
+  return db.brand.findMany({
+    where: { products: { some: { categoryId: { in: [categoryId, ...childIds] } } } },
+    orderBy: { name: "asc" },
+    take: 10,
+  });
+}
+
+/** Site-wide brand list — fallback for virtual nav items (e.g. Sale) that have no real category to scope brands to. */
+export async function getTopBrands() {
+  return db.brand.findMany({ orderBy: { name: "asc" }, take: 10 });
+}
+
 /**
  * Activates the otherwise-unused BannerPosition.CATEGORY value: a Banner
  * whose ctaLink starts with /{slug} is treated as that category's editorial

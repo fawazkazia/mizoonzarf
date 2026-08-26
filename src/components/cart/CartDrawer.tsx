@@ -7,6 +7,7 @@ import { Img } from "@/components/ui/ArtImage";
 import { ButtonLink } from "@/components/ui/Button";
 import { Sheet } from "@/components/ui/Sheet";
 import { useSettings } from "@/components/SettingsContext";
+import { formatINR } from "@/lib/currency";
 
 export function CartDrawer() {
   const state = useCartStore();
@@ -36,9 +37,7 @@ export function CartDrawer() {
             {remaining > 0 ? (
               <>
                 Add{" "}
-                <strong className="text-ink">
-                  {settings.currencySymbol} {remaining.toFixed(2)}
-                </strong>{" "}
+                <strong className="text-ink">{formatINR(remaining)}</strong>{" "}
                 more for free delivery
               </>
             ) : (
@@ -85,9 +84,7 @@ export function CartDrawer() {
                     <Link href={`/product/${line.productSlug}`} onClick={state.closeDrawer} className="text-sm font-medium hover:underline">
                       {line.productName}
                     </Link>
-                    <span className="text-sm">
-                      {settings.currencySymbol} {((line.salePrice ?? line.price) * line.quantity).toFixed(2)}
-                    </span>
+                    <span className="text-sm">{formatINR((line.salePrice ?? line.price) * line.quantity)}</span>
                   </div>
                   <p className="text-xs text-ink-mute">{[line.size, line.color].filter(Boolean).join(" / ")}</p>
                   <div className="mt-1 flex items-center gap-3">
@@ -128,9 +125,7 @@ export function CartDrawer() {
         <div className="border-t border-line px-6 py-5">
           <div className="mb-1 flex justify-between text-sm">
             <span className="text-ink-soft">Subtotal</span>
-            <span className="font-medium">
-              {settings.currencySymbol} {state.subtotal.toFixed(2)}
-            </span>
+            <span className="font-medium">{formatINR(state.subtotal)}</span>
           </div>
           <p className="mb-4 text-xs text-ink-mute">Taxes and shipping calculated at checkout.</p>
           <ButtonLink href="/checkout" onClick={state.closeDrawer} className="w-full">

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getDashboardStats } from "@/lib/data/admin-dashboard";
-import { getSettings } from "@/lib/settings";
+import { formatINR } from "@/lib/currency";
 import { StatCard } from "@/components/admin/StatCard";
 import { RevenueTrendChart, OrdersByStatusChart } from "@/components/admin/DashboardCharts";
 import { Table, Th, Td, EmptyRow } from "@/components/admin/Table";
@@ -9,19 +9,36 @@ import { Badge } from "@/components/ui/Badge";
 export const metadata = { title: "Dashboard" };
 
 export default async function AdminDashboardPage() {
-  const [stats, settings] = await Promise.all([getDashboardStats(), getSettings()]);
+  const stats = await getDashboardStats();
 
   return (
     <div className="flex flex-col gap-8">
       <h1 className="font-display text-3xl">Dashboard</h1>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
-        <StatCard label="Revenue" value={`${settings.currencySymbol} ${stats.revenue.toFixed(0)}`} />
-        <StatCard label="Orders" value={String(stats.orderCount)} />
-        <StatCard label="Customers" value={String(stats.customerCount)} />
-        <StatCard label="Products" value={String(stats.productCount)} />
-        <StatCard label="Avg. Order Value" value={`${settings.currencySymbol} ${stats.avgOrderValue.toFixed(0)}`} />
-        <StatCard label="Low Stock" value={String(stats.lowStockCount)} tone={stats.lowStockCount > 0 ? "warning" : "default"} />
+        <StatCard label="Revenue" value={formatINR(stats.revenue)} href="/admin/analytics" />
+        <StatCard label="Orders" value={String(stats.orderCount)} href="/admin/orders" />
+        <StatCard label="Customers" value={String(stats.customerCount)} href="/admin/customers" />
+        <StatCard label="Products" value={String(stats.productCount)} href="/admin/products" />
+        <StatCard label="Avg. Order Value" value={formatINR(stats.avgOrderValue)} href="/admin/analytics" />
+        <StatCard
+          label="Low Stock"
+          value={String(stats.lowStockCount)}
+          tone={stats.lowStockCount > 0 ? "warning" : "default"}
+          href="/admin/products?stock=low"
+        />
+        <StatCard
+          label="Abandoned Carts"
+          value={String(stats.abandonedCartCount)}
+          tone={stats.abandonedCartCount > 0 ? "warning" : "default"}
+          href="/admin/abandoned-carts"
+        />
+        <StatCard
+          label="Pending Returns"
+          value={String(stats.pendingReturnsCount)}
+          tone={stats.pendingReturnsCount > 0 ? "warning" : "default"}
+          href="/admin/returns"
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -67,9 +84,7 @@ export default async function AdminDashboardPage() {
                       {o.status.replace(/_/g, " ")}
                     </Badge>
                   </Td>
-                  <Td className="text-right">
-                    {settings.currencySymbol} {o.total.toFixed(2)}
-                  </Td>
+                  <Td className="text-right">{formatINR(o.total)}</Td>
                 </tr>
               ))}
             </tbody>
@@ -79,7 +94,7 @@ export default async function AdminDashboardPage() {
         <div>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-display text-lg">Low Stock</h2>
-            <Link href="/admin/products" className="text-xs uppercase tracking-wide underline">
+            <Link href="/admin/products?stock=low" className="text-xs uppercase tracking-wide underline">
               View Products
             </Link>
           </div>

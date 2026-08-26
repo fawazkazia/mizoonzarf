@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Field, Select, Input, Textarea } from "@/components/admin/FormField";
-import { updateOrderStatus, updateShipment, updatePaymentStatus } from "../actions";
-import type { OrderStatus } from "@/generated/prisma/client";
+import { updateOrderStatus, updateShipment, updatePaymentStatus, refundPayment } from "../actions";
+import type { OrderStatus, PaymentMethod } from "@/generated/prisma/client";
 
 const STATUSES: OrderStatus[] = [
   "ORDER_PLACED",
@@ -28,11 +28,13 @@ export function OrderStatusUpdater({
   orderId,
   currentStatus,
   currentPaymentStatus,
+  paymentMethod,
   shipment,
 }: {
   orderId: string;
   currentStatus: OrderStatus;
   currentPaymentStatus: string;
+  paymentMethod: PaymentMethod;
   shipment: { carrier: string; trackingNumber: string; estimatedDelivery: string };
 }) {
   const router = useRouter();
@@ -66,6 +68,19 @@ export function OrderStatusUpdater({
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't update payment status.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRefund() {
+    setLoading(true);
+    try {
+      await refundPayment(orderId);
+      toast.success("Payment refunded.");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't refund payment.");
     } finally {
       setLoading(false);
     }
@@ -109,20 +124,33 @@ export function OrderStatusUpdater({
 
       <div className="border border-line p-5">
         <h2 className="mb-4 font-display text-lg">Payment</h2>
-        <div className="flex flex-col gap-3">
-          <Field label="Payment Status">
-            <Select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}>
-              {PAYMENT_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s.replace(/_/g, " ")}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Button onClick={handlePaymentUpdate} disabled={loading} size="sm" variant="secondary" className="self-start">
-            Update Payment Status
-          </Button>
-        </div>
+        {paymentMethod === "COD" ? (
+          <div className="flex flex-col gap-3">
+            <Field label="Payment Status">
+              <Select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}>
+                {PAYMENT_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s.replace(/_/g, " ")}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Button onClick={handlePaymentUpdate} disabled={loading} size="sm" variant="secondary" className="self-start">
+              Update Payment Status
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-ink-soft">
+              Status: <span className="font-medium text-ink">{currentPaymentStatus.replace(/_/g, " ")}</span> — synced automatically via the payment gateway.
+            </p>
+            {currentPaymentStatus === "PAID" && (
+              <Button onClick={handleRefund} disabled={loading} size="sm" variant="secondary" className="self-start">
+                Refund Payment
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="border border-line p-5">

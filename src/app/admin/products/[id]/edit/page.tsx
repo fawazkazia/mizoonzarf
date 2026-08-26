@@ -49,6 +49,8 @@ export default async function EditProductPage({ params }: PageProps) {
           fragranceBaseNotes: notes?.base?.join(", ") ?? "",
           concentration: product.concentration ?? "",
           tags: product.tags.join(", "),
+          gstRate: product.gstRate != null ? String(product.gstRate) : "",
+          hsnCode: product.hsnCode ?? "",
           status: product.status,
           isFeatured: product.isFeatured,
           seoTitle: product.seoTitle ?? "",

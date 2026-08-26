@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { getSettings } from "@/lib/settings";
+import { formatINR } from "@/lib/currency";
 import type { Prisma, ProductStatus } from "@/generated/prisma/client";
 import { Table, Th, Td, EmptyRow } from "@/components/admin/Table";
 import { SearchInput } from "@/components/admin/SearchInput";
@@ -15,19 +15,25 @@ export const metadata = { title: "Products" };
 const PER_PAGE = 20;
 
 interface PageProps {
-  searchParams: Promise<{ q?: string; status?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; page?: string; stock?: string }>;
 }
 
 export default async function ProductsPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const page = Number(sp.page ?? 1);
-  const settings = await getSettings();
+  const lowStockOnly = sp.stock === "low";
 
   const where: Prisma.ProductWhereInput = {};
   if (sp.q) {
     where.OR = [{ name: { contains: sp.q, mode: "insensitive" } }, { sku: { contains: sp.q, mode: "insensitive" } }];
   }
   if (sp.status) where.status = sp.status as ProductStatus;
+  if (lowStockOnly) {
+    const lowStockRows = await db.$queryRaw<{ productId: string }[]>`
+      SELECT DISTINCT "productId" FROM "product_variants" WHERE stock <= "lowStockThreshold"
+    `;
+    where.id = { in: lowStockRows.map((r) => r.productId) };
+  }
 
   const [products, total] = await Promise.all([
     db.product.findMany({
@@ -35,7 +41,11 @@ export default async function ProductsPage({ searchParams }: PageProps) {
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PER_PAGE,
       take: PER_PAGE,
-      include: { images: { take: 1, orderBy: { sortOrder: "asc" } }, category: true, variants: { select: { stock: true } } },
+      include: {
+        images: { take: 1, orderBy: { sortOrder: "asc" } },
+        category: true,
+        variants: { select: { stock: true, lowStockThreshold: true, size: true, color: true } },
+      },
     }),
     db.product.count({ where }),
   ]);
@@ -43,12 +53,17 @@ export default async function ProductsPage({ searchParams }: PageProps) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-display text-3xl">Products</h1>
+        <h1 className="font-display text-3xl">{lowStockOnly ? "Low Stock Products" : "Products"}</h1>
         <ButtonLink href="/admin/products/new">+ Add Product</ButtonLink>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <SearchInput placeholder="Search by name or SKU..." />
+        {lowStockOnly && (
+          <Link href="/admin/products" className="text-xs uppercase tracking-wide text-sale underline">
+            Clear Low Stock Filter
+          </Link>
+        )}
         <a href="/api/admin/products/export" className="text-xs uppercase tracking-wide underline">
           Export CSV
         </a>
@@ -69,6 +84,7 @@ export default async function ProductsPage({ searchParams }: PageProps) {
           {products.length === 0 && <EmptyRow colSpan={6}>No products found.</EmptyRow>}
           {products.map((p) => {
             const stock = p.variants.reduce((sum, v) => sum + v.stock, 0);
+            const lowVariants = p.variants.filter((v) => v.stock <= v.lowStockThreshold);
             return (
               <tr key={p.id}>
                 <Td>
@@ -83,10 +99,19 @@ export default async function ProductsPage({ searchParams }: PageProps) {
                   </Link>
                 </Td>
                 <Td>{p.category.name}</Td>
-                <Td>
-                  {settings.currencySymbol} {Number(p.basePrice).toFixed(2)}
+                <Td>{formatINR(Number(p.basePrice))}</Td>
+                <Td className={lowVariants.length > 0 ? "text-sale" : ""}>
+                  {stock}
+                  {lowStockOnly && lowVariants.length > 0 && (
+                    <p className="mt-0.5 text-[11px] font-normal normal-case text-ink-soft">
+                      {lowVariants
+                        .slice(0, 3)
+                        .map((v) => `${[v.size, v.color].filter(Boolean).join("/") || "Default"}: ${v.stock}`)
+                        .join(", ")}
+                      {lowVariants.length > 3 ? ` +${lowVariants.length - 3} more` : ""}
+                    </p>
+                  )}
                 </Td>
-                <Td className={stock <= 5 ? "text-sale" : ""}>{stock}</Td>
                 <Td>
                   <Badge tone={p.status === "ACTIVE" ? "success" : p.status === "DRAFT" ? "outline" : "ink"}>{p.status}</Badge>
                 </Td>
@@ -106,6 +131,7 @@ export default async function ProductsPage({ searchParams }: PageProps) {
           const params = new URLSearchParams();
           if (sp.q) params.set("q", sp.q);
           if (sp.status) params.set("status", sp.status);
+          if (sp.stock) params.set("stock", sp.stock);
           params.set("page", String(p));
           return `?${params.toString()}`;
         }}

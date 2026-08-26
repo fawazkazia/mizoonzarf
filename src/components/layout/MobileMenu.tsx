@@ -5,6 +5,7 @@ import Link from "next/link";
 import { X, ChevronDown, User, Heart, Search as SearchIcon, MessageCircle, Package } from "lucide-react";
 import { Img } from "@/components/ui/ArtImage";
 import { Sheet } from "@/components/ui/Sheet";
+import { CountryFlag } from "@/components/ui/CountryFlag";
 import { useUIStore } from "@/stores/ui-store";
 import { useSettings } from "@/components/SettingsContext";
 import { cn } from "@/lib/utils";
@@ -129,7 +130,7 @@ export function MobileMenu({ menu, isSignedIn }: { menu: NavItem[]; isSignedIn: 
           <Link href="/account/wishlist" onClick={close} className="flex items-center gap-2 text-sm">
             <Heart size={17} /> Wishlist
           </Link>
-          <Link href="/account/orders" onClick={close} className="flex items-center gap-2 text-sm">
+          <Link href={isSignedIn ? "/account/orders" : "/track-order"} onClick={close} className="flex items-center gap-2 text-sm">
             <Package size={17} /> Track Order
           </Link>
         </div>
@@ -142,7 +143,7 @@ export function MobileMenu({ menu, isSignedIn }: { menu: NavItem[]; isSignedIn: 
           <MessageCircle size={17} /> {settings.header.supportPhone}
         </a>
         <p className="flex items-center gap-1.5 text-xs text-ink-soft">
-          <span aria-hidden="true">{settings.header.countryFlag}</span> {settings.header.countryLabel}
+          <CountryFlag code={settings.header.countryCode} className="h-3 w-4 shrink-0 rounded-[1px]" /> {settings.header.countryLabel}
         </p>
       </div>
     </Sheet>

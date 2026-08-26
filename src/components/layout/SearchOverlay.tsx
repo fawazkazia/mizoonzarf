@@ -1,26 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Search as SearchIcon, X } from "lucide-react";
+import { Search as SearchIcon, X, Mic } from "lucide-react";
 import { Img } from "@/components/ui/ArtImage";
 import { Price } from "@/components/ui/Price";
 import { Sheet } from "@/components/ui/Sheet";
 import { useUIStore } from "@/stores/ui-store";
 import { useDisplayPrice } from "@/hooks/useDisplayPrice";
+import { useSearchBox } from "@/hooks/useSearchBox";
+import { cn } from "@/lib/utils";
 import type { NavItem } from "@/lib/nav";
-
-interface SuggestionProduct {
-  id: string;
-  name: string;
-  slug: string;
-  price: number;
-  compareAtPrice: number | null;
-  image: string | null;
-}
-
-const RECENT_KEY = "recent_searches";
 
 function ResultPrice({ price, compareAt }: { price: number; compareAt: number | null }) {
   const display = useDisplayPrice(price, compareAt);
@@ -32,78 +22,42 @@ function ResultPrice({ price, compareAt }: { price: number; compareAt: number | 
   );
 }
 
+/** Mobile's full-screen search (the desktop header search is now an inline
+ * dropdown — see HeaderSearchBar.tsx — since a full takeover screen for what
+ * should be "click and type right here" was the wrong pattern there, but it's
+ * still the right one on mobile where there's no room for an anchored panel). */
 export function SearchOverlay({ categories = [] }: { categories?: NavItem[] }) {
   const open = useUIStore((s) => s.searchOpen);
   const setOpen = useUIStore((s) => s.setSearchOpen);
-  const router = useRouter();
-  const [query, setQuery] = useState("");
-  const [products, setProducts] = useState<SuggestionProduct[]>([]);
-  const [popular, setPopular] = useState<string[]>([]);
-  const [recentVersion, setRecentVersion] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Read once per open (and after saveRecent/"Clear all" bump the version) —
-  // gated on `open` so this never touches localStorage during SSR, and
-  // computed during render rather than via an effect-driven setState.
-  const recent = useMemo<string[]>(() => {
-    if (!open) return [];
-    try {
-      return JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
-    } catch {
-      return [];
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, recentVersion]);
 
   function close() {
     setOpen(false);
-    setQuery("");
-    setProducts([]);
+    reset();
   }
 
-  // Gated on `open` — previously this fetched on every page load regardless
-  // of whether the overlay was visible.
+  const {
+    query,
+    setQuery,
+    products,
+    popular,
+    recent,
+    clearRecent,
+    highlightIndex,
+    setHighlightIndex,
+    saveRecent,
+    goToSearch,
+    handleKeyDown,
+    voiceSupported,
+    listening,
+    toggleVoiceSearch,
+    reset,
+  } = useSearchBox(open, close);
+
   useEffect(() => {
     if (!open) return;
     inputRef.current?.focus();
   }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const controller = new AbortController();
-    const handle = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/search/suggestions?q=${encodeURIComponent(query)}`, { signal: controller.signal });
-        const data = await res.json();
-        setProducts(data.products ?? []);
-        setPopular(data.popular ?? []);
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") throw err;
-      }
-    }, 200);
-    return () => {
-      clearTimeout(handle);
-      controller.abort();
-    };
-  }, [query, open]);
-
-  function saveRecent(term: string) {
-    if (!term.trim()) return;
-    const next = [term, ...recent.filter((r) => r !== term)].slice(0, 6);
-    localStorage.setItem(RECENT_KEY, JSON.stringify(next));
-    setRecentVersion((v) => v + 1);
-    fetch("/api/search/suggestions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ term }),
-    });
-  }
-
-  function goToSearch(term: string) {
-    saveRecent(term);
-    close();
-    router.push(`/search?q=${encodeURIComponent(term)}`);
-  }
 
   const browsableCategories = categories.filter((c) => !c.isVirtual);
 
@@ -116,10 +70,20 @@ export function SearchOverlay({ categories = [] }: { categories?: NavItem[] }) {
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && goToSearch(query)}
+            onKeyDown={handleKeyDown}
             placeholder="Search products, brands, categories..."
             className="flex-1 bg-transparent font-display text-2xl outline-none placeholder:text-ink-soft/40"
           />
+          {voiceSupported && (
+            <button
+              onClick={toggleVoiceSearch}
+              aria-label={listening ? "Stop voice search" : "Search by voice"}
+              aria-pressed={listening}
+              className={cn("text-ink-soft hover:text-ink", listening && "animate-pulse text-sale")}
+            >
+              <Mic size={18} />
+            </button>
+          )}
           {query && (
             <button onClick={() => setQuery("")} aria-label="Clear search" className="text-ink-soft hover:text-ink">
               <X size={16} />
@@ -137,20 +101,17 @@ export function SearchOverlay({ categories = [] }: { categories?: NavItem[] }) {
                 <div>
                   <div className="mb-3 flex items-center justify-between">
                     <p className="text-xs uppercase tracking-[0.14em] text-ink-soft">Recent Searches</p>
-                    <button
-                      onClick={() => {
-                        localStorage.removeItem(RECENT_KEY);
-                        setRecentVersion((v) => v + 1);
-                      }}
-                      className="text-xs text-ink-soft underline"
-                    >
+                    <button onClick={clearRecent} className="text-xs text-ink-soft underline">
                       Clear all
                     </button>
                   </div>
                   <ul className="flex flex-col">
-                    {recent.map((term) => (
+                    {recent.map((term, i) => (
                       <li key={term}>
-                        <button onClick={() => goToSearch(term)} className="link-reveal py-1.5 text-sm">
+                        <button
+                          onClick={() => goToSearch(term)}
+                          className={cn("link-reveal py-1.5 text-sm", highlightIndex === i && "text-ink underline")}
+                        >
                           {term}
                         </button>
                       </li>
@@ -162,9 +123,15 @@ export function SearchOverlay({ categories = [] }: { categories?: NavItem[] }) {
                 <div>
                   <p className="mb-3 text-xs uppercase tracking-[0.14em] text-ink-soft">Popular Searches</p>
                   <ul className="flex flex-col">
-                    {popular.map((term) => (
+                    {popular.map((term, i) => (
                       <li key={term}>
-                        <button onClick={() => goToSearch(term)} className="link-reveal py-1.5 text-sm capitalize">
+                        <button
+                          onClick={() => goToSearch(term)}
+                          className={cn(
+                            "link-reveal py-1.5 text-sm capitalize",
+                            highlightIndex === recent.length + i && "text-ink underline"
+                          )}
+                        >
                           {term}
                         </button>
                       </li>
@@ -200,7 +167,11 @@ export function SearchOverlay({ categories = [] }: { categories?: NavItem[] }) {
                   key={p.id}
                   href={`/product/${p.slug}`}
                   onClick={() => saveRecent(query)}
-                  className="flex items-center gap-4 animate-fade-in"
+                  onMouseEnter={() => setHighlightIndex(i)}
+                  className={cn(
+                    "flex items-center gap-4 animate-fade-in rounded-sm",
+                    highlightIndex === i && "bg-paper-dim"
+                  )}
                   style={{ animationDelay: `${i * 22}ms` }}
                 >
                   <div className="img-zoom aspect-[3/4] w-16 shrink-0 overflow-hidden bg-paper-dim">

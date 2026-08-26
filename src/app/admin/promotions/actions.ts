@@ -19,6 +19,20 @@ export async function createCoupon(raw: CouponInput) {
   const existing = await db.coupon.findUnique({ where: { code } });
   if (existing) throw new Error(`Coupon code "${code}" already exists.`);
 
+  const skus = input.productSkus.map((s) => s.trim()).filter(Boolean);
+  const emails = input.customerEmails.map((e) => e.trim().toLowerCase()).filter(Boolean);
+
+  const [products, customers] = await Promise.all([
+    skus.length ? db.product.findMany({ where: { sku: { in: skus } }, select: { id: true, sku: true } }) : Promise.resolve([]),
+    emails.length ? db.user.findMany({ where: { email: { in: emails } }, select: { id: true, email: true } }) : Promise.resolve([]),
+  ]);
+
+  const missingSkus = skus.filter((sku) => !products.some((p) => p.sku === sku));
+  if (missingSkus.length > 0) throw new Error(`No product found for SKU(s): ${missingSkus.join(", ")}`);
+
+  const missingEmails = emails.filter((email) => !customers.some((c) => c.email.toLowerCase() === email));
+  if (missingEmails.length > 0) throw new Error(`No customer account found for: ${missingEmails.join(", ")}`);
+
   await db.coupon.create({
     data: {
       code,
@@ -29,6 +43,9 @@ export async function createCoupon(raw: CouponInput) {
       maxDiscountAmount: input.maxDiscountAmount ?? null,
       usageLimit: input.usageLimit ?? null,
       perCustomerLimit: input.perCustomerLimit ?? null,
+      categorySlugs: input.categorySlugs,
+      productIds: products.map((p) => p.id),
+      customerIds: customers.map((c) => c.id),
       startDate: new Date(input.startDate),
       endDate: new Date(input.endDate),
       isActive: input.isActive,

@@ -96,48 +96,46 @@ export function ProductCard({ product, className }: { product: ProductCardData; 
       </div>
 
       <Link href={`/product/${product.slug}`} className="mt-3 flex flex-col gap-1.5">
-        {product.brand && <p className="text-[11px] uppercase tracking-[0.1em] text-ink-soft/70">{product.brand}</p>}
-        <p className="text-sm leading-snug">{product.name}</p>
+        <p className="flex h-4 items-center text-[11px] uppercase tracking-[0.1em] text-ink-soft/70">{product.brand || " "}</p>
+        <p className="line-clamp-2 h-10 text-sm leading-snug">{product.name}</p>
         <span className="inline-flex items-center gap-1">
           {display.isConverted && <span className="text-ink-soft/60">≈</span>}
           <Price price={display.price} compareAt={display.compareAt} currency={display.symbol} size="sm" />
         </span>
-        {product.reviewCount > 0 && <Rating value={product.rating} count={product.reviewCount} size={11} />}
+        <div className="flex h-4 items-center">
+          {product.reviewCount > 0 && <Rating value={product.rating} count={product.reviewCount} size={11} />}
+        </div>
 
-        {product.colors.length > 0 && (
-          <div className="mt-1 flex items-center gap-1.5">
-            {product.colors.slice(0, 4).map((c) =>
-              c.hex ? (
-                <span key={c.name} title={c.name} className="h-3 w-3 rounded-full ring-1 ring-ink/15" style={{ backgroundColor: c.hex }} />
-              ) : (
-                <span
-                  key={c.name}
-                  title={c.name}
-                  className="flex h-3 w-3 items-center justify-center rounded-full bg-paper-dim text-[6px] uppercase leading-none text-ink-soft ring-1 ring-ink/15"
-                >
-                  {c.name[0]}
-                </span>
-              )
-            )}
-            {product.colors.length > 4 && <span className="text-[10px] text-ink-soft">+{product.colors.length - 4}</span>}
-          </div>
-        )}
-
-        {product.sizes.length > 0 && (
-          <div className="hidden flex-wrap gap-1.5 lg:flex lg:opacity-0 lg:transition-opacity lg:duration-[var(--dur-1)] lg:group-hover:opacity-100">
-            {product.sizes.map((s) => (
+        <div className="mt-1 flex h-4 items-center gap-1.5">
+          {product.colors.slice(0, 4).map((c) =>
+            c.hex ? (
+              <span key={c.name} title={c.name} className="h-3 w-3 shrink-0 rounded-full ring-1 ring-ink/15" style={{ backgroundColor: c.hex }} />
+            ) : (
               <span
-                key={s}
-                className={cn(
-                  "text-[10px] uppercase text-ink-soft",
-                  !product.sizesInStock.includes(s) && "text-ink-soft/30 line-through"
-                )}
+                key={c.name}
+                title={c.name}
+                className="flex h-3 w-3 shrink-0 items-center justify-center rounded-full bg-paper-dim text-[6px] uppercase leading-none text-ink-soft ring-1 ring-ink/15"
               >
-                {s}
+                {c.name[0]}
               </span>
-            ))}
-          </div>
-        )}
+            )
+          )}
+          {product.colors.length > 4 && <span className="text-[10px] text-ink-soft">+{product.colors.length - 4}</span>}
+        </div>
+
+        <div className="hidden h-4 flex-wrap items-center gap-1.5 lg:flex lg:opacity-0 lg:transition-opacity lg:duration-[var(--dur-1)] lg:group-hover:opacity-100">
+          {product.sizes.map((s) => (
+            <span
+              key={s}
+              className={cn(
+                "text-[10px] uppercase text-ink-soft",
+                !product.sizesInStock.includes(s) && "text-ink-soft/30 line-through"
+              )}
+            >
+              {s}
+            </span>
+          ))}
+        </div>
       </Link>
     </div>
   );

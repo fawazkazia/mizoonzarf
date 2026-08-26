@@ -37,7 +37,7 @@ export async function CompleteTheLook({
                   <Link href={`/product/${slot.product.slug}`} className="text-sm font-medium hover:underline">
                     {slot.product.name}
                   </Link>
-                  <Price price={slot.product.price} compareAt={slot.product.compareAtPrice} currency={settings.currencySymbol} size="sm" />
+                  <Price price={slot.product.price} compareAt={slot.product.compareAtPrice} currency={settings.currency} size="sm" />
                 </div>
                 <CompleteTheLookAddButton
                   slug={slot.product.slug}

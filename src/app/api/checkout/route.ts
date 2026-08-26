@@ -7,6 +7,11 @@ import { calculateTotals, generateOrderNumber, type AppliedCoupon } from "@/lib/
 import { checkoutSchema } from "@/lib/validation/checkout";
 import { getPaymentProvider } from "@/lib/payments/registry";
 import { notify, ORDER_EVENT_TEMPLATES } from "@/lib/notifications/registry";
+import { markOrderFailed } from "@/lib/orders/payment-events";
+import { maybeAutoCreateShipment } from "@/lib/shipping/orchestrator";
+import { resolveCheckoutPhoneVerification } from "@/lib/otp/checkout-verification";
+import { GUEST_PHONE_TOKEN_COOKIE, COD_CONFIRM_VALIDITY_MINUTES } from "@/lib/otp/constants";
+import { computeOrderRisk } from "@/lib/risk/computeOrderRisk";
 
 export async function POST(req: NextRequest) {
   const body = checkoutSchema.safeParse(await req.json());
@@ -21,6 +26,20 @@ export async function POST(req: NextRequest) {
 
   if (!cart || cart.items.length === 0) {
     return NextResponse.json({ error: "Your cart is empty." }, { status: 400 });
+  }
+
+  // Server-side enforcement of mobile verification — the frontend also gates this, but a
+  // request straight to this endpoint (bypassing the UI) must be refused here too.
+  const phoneVerified = await resolveCheckoutPhoneVerification({
+    phone: input.phone,
+    userId: session?.user?.id,
+    guestPhoneToken: req.cookies.get(GUEST_PHONE_TOKEN_COOKIE)?.value,
+  });
+  if (!phoneVerified) {
+    return NextResponse.json(
+      { error: "Please verify your mobile number before placing your order.", code: "PHONE_NOT_VERIFIED" },
+      { status: 403 }
+    );
   }
 
   const insufficient = cart.items.filter((i) => i.quantity > i.variant.stock);
@@ -56,10 +75,68 @@ export async function POST(req: NextRequest) {
     price: Number(item.variant.price),
     salePrice: item.variant.salePrice ? Number(item.variant.salePrice) : null,
     quantity: item.quantity,
+    gstRate: item.product.gstRate != null ? Number(item.product.gstRate) : settings.taxPercent,
   }));
 
-  const totals = calculateTotals(lines, settings, coupon, input.deliveryMethod);
+  const shippingState = input.address.state ?? null;
+  const totals = calculateTotals(lines, settings, coupon, input.deliveryMethod, shippingState);
   const orderNumber = generateOrderNumber();
+
+  const risk = await computeOrderRisk({
+    userId: session?.user?.id,
+    phone: input.phone,
+    address: { line1: input.address.line1, postalCode: input.address.postalCode },
+    paymentMethod: input.paymentMethod,
+    orderTotal: totals.total,
+    highValueCodThreshold: settings.codRisk.highValueCodThreshold,
+  });
+
+  let codConfirmedAt: Date | null = null;
+  if (input.paymentMethod === "COD") {
+    if (totals.total > settings.codRisk.maxCodOrderValue) {
+      return NextResponse.json(
+        { error: `Cash on Delivery isn't available for orders over ${settings.currencySymbol}${settings.codRisk.maxCodOrderValue}. Please choose a different payment method.`, code: "COD_UNAVAILABLE" },
+        { status: 400 }
+      );
+    }
+
+    const identityWhere = session?.user?.id ? { userId: session.user.id } : { guestPhone: input.phone };
+    const codOrderCount = await db.order.count({
+      where: { ...identityWhere, paymentMethod: "COD", createdAt: { gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) } },
+    });
+    if (codOrderCount >= settings.codRisk.maxCodOrdersPerCustomer) {
+      return NextResponse.json(
+        { error: "You've reached the limit for Cash on Delivery orders. Please choose a prepaid payment method.", code: "COD_UNAVAILABLE" },
+        { status: 400 }
+      );
+    }
+
+    if (risk.riskLevel === "HIGH") {
+      if (!settings.codRisk.allowHighRiskCod) {
+        return NextResponse.json(
+          { error: "Cash on Delivery isn't available for this order. Please choose a different payment method.", code: "COD_UNAVAILABLE" },
+          { status: 400 }
+        );
+      }
+      if (settings.codRisk.requireConfirmOnHighRiskCod) {
+        const recentConfirm = await db.phoneOtp.findFirst({
+          where: {
+            phone: input.phone,
+            purpose: "COD_RISK_CONFIRM",
+            consumedAt: { gte: new Date(Date.now() - COD_CONFIRM_VALIDITY_MINUTES * 60 * 1000) },
+          },
+          orderBy: { consumedAt: "desc" },
+        });
+        if (!recentConfirm) {
+          return NextResponse.json(
+            { error: "Please confirm your Cash on Delivery order with the code we texted you.", code: "COD_CONFIRM_REQUIRED" },
+            { status: 403 }
+          );
+        }
+        codConfirmedAt = recentConfirm.consumedAt;
+      }
+    }
+  }
 
   const order = await db.$transaction(async (tx) => {
     const created = await tx.order.create({
@@ -73,6 +150,12 @@ export async function POST(req: NextRequest) {
         discountAmount: totals.discountAmount,
         shippingFee: totals.shippingFee,
         taxAmount: totals.taxAmount,
+        cgstAmount: totals.cgstAmount,
+        sgstAmount: totals.sgstAmount,
+        igstAmount: totals.igstAmount,
+        customerGstin: input.gstin || null,
+        sellerGstin: settings.gst.sellerGstin || null,
+        sellerState: settings.gst.sellerState || null,
         total: totals.total,
         currency: settings.currency,
         couponCode: cart.couponCode,
@@ -81,8 +164,13 @@ export async function POST(req: NextRequest) {
         deliveryMethod: input.deliveryMethod,
         shippingAddress: input.address,
         notes: input.notes,
+        riskLevel: risk.riskLevel,
+        riskScore: risk.riskScore,
+        riskReasons: risk.riskReasons,
+        phoneVerified: true,
+        codConfirmedAt,
         items: {
-          create: cart.items.map((item) => ({
+          create: cart.items.map((item, i) => ({
             productId: item.productId,
             variantId: item.variantId,
             productName: item.product.name,
@@ -91,6 +179,8 @@ export async function POST(req: NextRequest) {
             price: item.variant.salePrice ?? item.variant.price,
             quantity: item.quantity,
             subtotal: Number(item.variant.salePrice ?? item.variant.price) * item.quantity,
+            gstRate: lines[i].gstRate,
+            hsnCode: item.product.hsnCode,
           })),
         },
         statusHistory: { create: { status: "ORDER_PLACED", note: "Order placed by customer." } },
@@ -125,31 +215,64 @@ export async function POST(req: NextRequest) {
     return created;
   });
 
-  const charge = await provider.charge({ orderId: order.id, orderNumber: order.orderNumber, amount: totals.total, currency: settings.currency });
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-  await db.payment.create({
-    data: {
+  let charge;
+  try {
+    charge = await provider.charge({
       orderId: order.id,
-      provider: input.paymentMethod,
-      status: charge.status,
+      orderNumber: order.orderNumber,
       amount: totals.total,
       currency: settings.currency,
-      transactionRef: charge.transactionRef,
-    },
-  });
+      successUrl: `${siteUrl}/checkout/confirmation/${order.orderNumber}?session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${siteUrl}/checkout`,
+    });
+  } catch (err) {
+    console.error("[checkout] provider.charge failed", err);
+    await markOrderFailed(order.id, "Payment could not be initiated.");
+    return NextResponse.json({ error: "We couldn't start your payment. Please try again." }, { status: 502 });
+  }
 
-  await notify({
-    channel: "EMAIL",
-    to: session?.user?.email ?? input.email,
-    templateKey: ORDER_EVENT_TEMPLATES.ORDER_PLACED,
-    variables: { customer_name: input.address.fullName, order_number: order.orderNumber, order_total: totals.total },
-  });
-  await notify({
-    channel: "WHATSAPP",
-    to: input.phone,
-    templateKey: ORDER_EVENT_TEMPLATES.ORDER_PLACED,
-    variables: { customer_name: input.address.fullName, order_number: order.orderNumber, order_total: totals.total },
-  });
+  try {
+    await db.payment.create({
+      data: {
+        orderId: order.id,
+        provider: input.paymentMethod,
+        status: charge.status,
+        amount: totals.total,
+        currency: settings.currency,
+        transactionRef: charge.transactionRef,
+        rawResponse: charge.raw as never,
+      },
+    });
+  } catch (err) {
+    console.error("[checkout] failed to record payment row", err);
+  }
 
-  return NextResponse.json({ ok: true, orderNumber: order.orderNumber });
+  const notifyVariables = { customer_name: input.address.fullName, order_number: order.orderNumber, order_total: totals.total };
+  for (const notification of [
+    { channel: "EMAIL" as const, to: session?.user?.email ?? input.email },
+    { channel: "WHATSAPP" as const, to: input.phone },
+    { channel: "SMS" as const, to: input.phone },
+  ]) {
+    try {
+      await notify({ channel: notification.channel, to: notification.to, templateKey: ORDER_EVENT_TEMPLATES.ORDER_PLACED, variables: notifyVariables });
+    } catch (err) {
+      console.error(`[checkout] notify(${notification.channel}) failed`, err);
+    }
+  }
+
+  // COD orders never pass through markOrderPaid (no gateway confirms them) — they're
+  // "confirmed" at placement by design in this codebase, so trigger shipment creation here.
+  if (input.paymentMethod === "COD") {
+    await maybeAutoCreateShipment(order.id);
+  }
+
+  return NextResponse.json({
+    ok: true,
+    orderId: order.id,
+    orderNumber: order.orderNumber,
+    redirectUrl: charge.redirectUrl,
+    clientAction: charge.clientAction,
+  });
 }

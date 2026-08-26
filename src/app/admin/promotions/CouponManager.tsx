@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Field, Input, Select } from "@/components/admin/FormField";
+import { Field, Input, Select, Textarea } from "@/components/admin/FormField";
 import { Table, Th, Td, EmptyRow } from "@/components/admin/Table";
 import { Badge } from "@/components/ui/Badge";
 import { createCoupon, toggleCoupon, deleteCoupon } from "./actions";
 import type { CouponInput } from "@/lib/validation/admin-promotion";
+import { formatINR } from "@/lib/currency";
 
 export interface CouponRow {
   code: string;
@@ -18,33 +19,56 @@ export interface CouponRow {
   discountValue: number;
   usageCount: number;
   usageLimit: number | null;
+  categorySlugs: string[];
+  productIds: string[];
+  customerIds: string[];
   startDate: string;
   endDate: string;
   isActive: boolean;
 }
 
-const EMPTY: CouponInput = {
-  code: "",
-  description: "",
-  discountType: "PERCENTAGE",
-  discountValue: 10,
-  startDate: new Date().toISOString().slice(0, 10),
-  endDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString().slice(0, 10),
-  isActive: true,
-};
+function emptyForm(): CouponInput {
+  return {
+    code: "",
+    description: "",
+    discountType: "PERCENTAGE",
+    discountValue: 10,
+    categorySlugs: [],
+    productSkus: [],
+    customerEmails: [],
+    startDate: new Date().toISOString().slice(0, 10),
+    endDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString().slice(0, 10),
+    isActive: true,
+  };
+}
 
-export function CouponManager({ coupons }: { coupons: CouponRow[] }) {
+export function CouponManager({ coupons, categoryOptions }: { coupons: CouponRow[]; categoryOptions: { slug: string; name: string }[] }) {
   const router = useRouter();
-  const [form, setForm] = useState<CouponInput>(EMPTY);
+  const [form, setForm] = useState<CouponInput>(emptyForm());
+  const [skusText, setSkusText] = useState("");
+  const [emailsText, setEmailsText] = useState("");
   const [loading, setLoading] = useState(false);
+
+  function toggleCategory(slug: string) {
+    setForm((f) => ({
+      ...f,
+      categorySlugs: f.categorySlugs.includes(slug) ? f.categorySlugs.filter((s) => s !== slug) : [...f.categorySlugs, slug],
+    }));
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
-      await createCoupon(form);
+      await createCoupon({
+        ...form,
+        productSkus: skusText.split(/[,\n]/).map((s) => s.trim()).filter(Boolean),
+        customerEmails: emailsText.split(/[,\n]/).map((s) => s.trim()).filter(Boolean),
+      });
       toast.success("Coupon created.");
-      setForm(EMPTY);
+      setForm(emptyForm());
+      setSkusText("");
+      setEmailsText("");
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't create coupon.");
@@ -95,6 +119,27 @@ export function CouponManager({ coupons }: { coupons: CouponRow[] }) {
             <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </Field>
         </div>
+        <div className="sm:col-span-3">
+          <p className="mb-2 text-xs uppercase tracking-[0.08em] text-ink-soft">Restrict to Categories (leave empty for all)</p>
+          <div className="flex flex-wrap gap-2">
+            {categoryOptions.map((c) => (
+              <button
+                key={c.slug}
+                type="button"
+                onClick={() => toggleCategory(c.slug)}
+                className={`border px-3 py-1.5 text-xs ${form.categorySlugs.includes(c.slug) ? "border-ink bg-ink text-paper" : "border-line"}`}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </div>
+        <Field label="Restrict to Product SKUs (comma-separated, optional)">
+          <Textarea rows={2} value={skusText} onChange={(e) => setSkusText(e.target.value)} placeholder="SKU-001, SKU-002" />
+        </Field>
+        <Field label="Restrict to Customer Emails (comma-separated, optional)">
+          <Textarea rows={2} value={emailsText} onChange={(e) => setEmailsText(e.target.value)} placeholder="customer@example.com" />
+        </Field>
         <Button type="submit" disabled={loading} className="self-start sm:col-span-3">
           Create Coupon
         </Button>
@@ -115,10 +160,19 @@ export function CouponManager({ coupons }: { coupons: CouponRow[] }) {
           {coupons.length === 0 && <EmptyRow colSpan={6}>No coupons yet.</EmptyRow>}
           {coupons.map((c) => (
             <tr key={c.code}>
-              <Td className="font-medium">{c.code}</Td>
+              <Td className="font-medium">
+                {c.code}
+                {(c.categorySlugs.length > 0 || c.productIds.length > 0 || c.customerIds.length > 0) && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {c.categorySlugs.length > 0 && <Badge tone="outline">{c.categorySlugs.length} categor{c.categorySlugs.length === 1 ? "y" : "ies"}</Badge>}
+                    {c.productIds.length > 0 && <Badge tone="outline">{c.productIds.length} product{c.productIds.length === 1 ? "" : "s"}</Badge>}
+                    {c.customerIds.length > 0 && <Badge tone="outline">{c.customerIds.length} customer{c.customerIds.length === 1 ? "" : "s"}</Badge>}
+                  </div>
+                )}
+              </Td>
               <Td>
                 {c.discountType === "PERCENTAGE" && `${c.discountValue}%`}
-                {c.discountType === "FIXED" && `AED ${c.discountValue}`}
+                {c.discountType === "FIXED" && formatINR(c.discountValue)}
                 {c.discountType === "FREE_SHIPPING" && "Free Shipping"}
               </Td>
               <Td>

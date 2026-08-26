@@ -62,8 +62,8 @@ export function NewsletterSection() {
       <div className="hidden lg:block">
         <Img src={null} alt="" seedFallback="newsletter-banner" className="h-full" />
       </div>
-      <Container className="flex flex-col items-center justify-center gap-5 py-20 text-center lg:items-start lg:px-16 lg:text-left">
-        <h2 className="font-display text-4xl sm:text-5xl">Join the List</h2>
+      <Container className="flex flex-col items-center justify-center gap-5 py-12 text-center sm:py-16 lg:items-start lg:px-16 lg:text-left">
+        <h2 className="font-display text-3xl sm:text-4xl">Join the List</h2>
         <p className="max-w-md text-paper/70">Exclusive drops. No spam. Unsubscribe anytime.</p>
         <div className="w-full max-w-md">
           <NewsletterForm dark />

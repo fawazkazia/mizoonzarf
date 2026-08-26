@@ -2,7 +2,15 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
-export function StatusFilterSelect({ options, paramKey = "status" }: { options: string[]; paramKey?: string }) {
+export function StatusFilterSelect({
+  options,
+  paramKey = "status",
+  placeholder = "All Statuses",
+}: {
+  options: string[];
+  paramKey?: string;
+  placeholder?: string;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -19,7 +27,7 @@ export function StatusFilterSelect({ options, paramKey = "status" }: { options: 
       }}
       className="border border-line bg-paper px-3 py-2 text-xs uppercase tracking-wide"
     >
-      <option value="">All Statuses</option>
+      <option value="">{placeholder}</option>
       {options.map((s) => (
         <option key={s} value={s}>
           {s.replace(/_/g, " ")}

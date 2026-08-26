@@ -30,7 +30,7 @@ function LoginForm() {
       return;
     }
 
-    await fetch("/api/cart/merge", { method: "POST" });
+    await Promise.all([fetch("/api/cart/merge", { method: "POST" }), fetch("/api/orders/merge", { method: "POST" })]);
     await Promise.all([fetchCart(), fetchWishlist()]);
     toast.success("Welcome back.");
     router.push(searchParams.get("callbackUrl") ?? "/account/profile");

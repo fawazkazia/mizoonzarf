@@ -16,6 +16,7 @@ export function DesktopNav({ items }: { items: NavItem[] }) {
 
   function scheduleOpen(slug: string) {
     if (closeTimer.current) clearTimeout(closeTimer.current);
+    if (openTimer.current) clearTimeout(openTimer.current);
     openTimer.current = setTimeout(() => setActiveSlug(slug), 70);
   }
 
@@ -96,12 +97,26 @@ export function DesktopNav({ items }: { items: NavItem[] }) {
               would paint ON TOP of the entire nav bar once open, silently
               eating hover/click on every other item until it was dismissed.
               Portaling escapes that context so it's correctly layered below
-              the header (z-40) and above the page, as intended. */}
+              the header (z-40) and above the page, as intended.
+
+              onPointerEnter={closeNow} (not scheduleClose): React computes
+              mouse enter/leave for portaled content against the REACT tree,
+              not the rendered DOM tree — since this scrim is still a React
+              child of the wrapper div below (just DOM-portaled elsewhere),
+              moving the pointer onto it does NOT fire the wrapper's
+              onPointerLeave the way moving onto any *unrelated* page element
+              does. Without this, the menu never auto-closes when the cursor
+              lands on the dimmed backdrop instead of a real nav/page element.
+              Closing immediately (not debounced) is correct here: the scrim
+              is only ever hit-testable where neither the header nor the
+              panel occlude it, i.e. only once the cursor has genuinely left
+              both. */}
           {typeof document !== "undefined" &&
             createPortal(
               <div
                 className="fixed inset-0 z-[35] bg-ink/25 transition-opacity duration-[var(--dur-2)]"
                 onClick={closeNow}
+                onPointerEnter={closeNow}
                 aria-hidden="true"
               />,
               document.body

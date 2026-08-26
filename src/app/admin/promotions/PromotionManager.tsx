@@ -10,6 +10,7 @@ import { Table, Th, Td, EmptyRow } from "@/components/admin/Table";
 import { Badge } from "@/components/ui/Badge";
 import { createPromotion, togglePromotion, deletePromotion } from "./actions";
 import type { PromotionInput } from "@/lib/validation/admin-promotion";
+import { formatINR } from "@/lib/currency";
 
 export interface PromotionRow {
   id: string;
@@ -150,7 +151,7 @@ export function PromotionManager({ promotions, categoryOptions }: { promotions: 
               <Td>{p.type.replace(/_/g, " ")}</Td>
               <Td>
                 {p.discountType === "PERCENTAGE" && `${p.discountValue}%`}
-                {p.discountType === "FIXED" && `AED ${p.discountValue}`}
+                {p.discountType === "FIXED" && formatINR(p.discountValue)}
                 {p.discountType === "FREE_SHIPPING" && "Free Shipping"}
               </Td>
               <Td>{new Date(p.endDate).toLocaleDateString()}</Td>

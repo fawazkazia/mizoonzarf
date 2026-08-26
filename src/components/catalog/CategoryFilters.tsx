@@ -4,7 +4,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SlidersHorizontal, X, LayoutGrid, Grid3x3, Star } from "lucide-react";
 import type { CatalogFacets } from "@/lib/data/catalog";
-import { useSettings } from "@/components/SettingsContext";
+import { formatINR } from "@/lib/currency";
 import { useFilterDrawerStore } from "@/stores/filter-drawer-store";
 import { useGridDensityStore } from "@/stores/grid-density-store";
 import { Sheet } from "@/components/ui/Sheet";
@@ -20,6 +20,7 @@ const SORTS: { value: string; label: string }[] = [
   { value: "price_desc", label: "Price: High to Low" },
   { value: "best_selling", label: "Best Selling" },
   { value: "rating", label: "Highest Rated" },
+  { value: "highest_discount", label: "Highest Discount" },
 ];
 
 function toggleParam(current: string[], value: string): string[] {
@@ -38,7 +39,9 @@ function useActiveFilterCount() {
     (searchParams.get("rating") ? 1 : 0) +
     (searchParams.get("inStock") ? 1 : 0) +
     (searchParams.get("onSale") ? 1 : 0) +
-    (searchParams.get("discount") ? 1 : 0)
+    (searchParams.get("discount") ? 1 : 0) +
+    (searchParams.get("newArrivals") ? 1 : 0) +
+    (searchParams.get("bestSellers") ? 1 : 0)
   );
 }
 
@@ -121,7 +124,6 @@ export function CatalogSidebar({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const settings = useSettings();
   const { open, setOpen } = useFilterDrawerStore();
   const [minPrice, setMinPrice] = useState(searchParams.get("minPrice") ?? "");
   const [maxPrice, setMaxPrice] = useState(searchParams.get("maxPrice") ?? "");
@@ -134,6 +136,8 @@ export function CatalogSidebar({
   const activeDiscount = searchParams.get("discount");
   const inStockOnly = searchParams.get("inStock") === "1";
   const onSaleOnly = searchParams.get("onSale") === "1";
+  const newArrivalsOnly = searchParams.get("newArrivals") === "1";
+  const bestSellersOnly = searchParams.get("bestSellers") === "1";
   const activeCount = useActiveFilterCount();
 
   function toggleBoolean(key: string, active: boolean) {
@@ -313,6 +317,14 @@ export function CatalogSidebar({
           <input type="checkbox" checked={onSaleOnly} onChange={() => toggleBoolean("onSale", onSaleOnly)} />
           On Sale
         </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={newArrivalsOnly} onChange={() => toggleBoolean("newArrivals", newArrivalsOnly)} />
+          New Arrivals
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={bestSellersOnly} onChange={() => toggleBoolean("bestSellers", bestSellersOnly)} />
+          Best Sellers
+        </label>
       </div>
 
       <div>
@@ -332,7 +344,7 @@ export function CatalogSidebar({
 
       <div>
         <p className="mb-3 text-xs uppercase tracking-[0.12em] text-ink-soft">
-          Price ({settings.currencySymbol} {facets.priceMin} – {facets.priceMax})
+          Price ({formatINR(facets.priceMin)} – {formatINR(facets.priceMax)})
         </p>
         <div className="flex items-center gap-2">
           <input

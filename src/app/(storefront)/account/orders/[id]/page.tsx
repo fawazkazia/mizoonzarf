@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getSettings } from "@/lib/settings";
+import { formatINR } from "@/lib/currency";
 import { OrderTimeline } from "@/components/account/OrderTimeline";
+import { ReturnItemAction } from "@/components/account/ReturnItemAction";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -11,14 +12,19 @@ interface PageProps {
 export default async function OrderDetailPage({ params }: PageProps) {
   const { id } = await params;
   const session = await auth();
-  const [order, settings] = await Promise.all([
-    db.order.findFirst({ where: { id, userId: session!.user.id }, include: { items: true, shipment: true } }),
-    getSettings(),
-  ]);
+  const order = await db.order.findFirst({
+    where: { id, userId: session!.user.id },
+    include: {
+      items: { include: { returns: true } },
+      statusHistory: { orderBy: { createdAt: "asc" } },
+      shipment: { include: { events: { orderBy: { occurredAt: "desc" } } } },
+    },
+  });
 
   if (!order) notFound();
 
   const address = order.shippingAddress as { fullName: string; line1: string; line2?: string; city: string; country: string; phone: string };
+  const shipment = order.shipment;
 
   return (
     <div>
@@ -27,13 +33,27 @@ export default async function OrderDetailPage({ params }: PageProps) {
         Placed on {order.createdAt.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
       </p>
 
-      <OrderTimeline status={order.status} />
-
-      {order.shipment?.trackingNumber && (
-        <p className="mt-6 text-sm">
-          Tracking Number: <strong>{order.shipment.trackingNumber}</strong> {order.shipment.carrier && `via ${order.shipment.carrier}`}
-        </p>
-      )}
+      <OrderTimeline
+        status={order.status}
+        statusHistory={order.statusHistory}
+        placedAt={order.createdAt}
+        paymentMethod={order.paymentMethod}
+        shipment={
+          shipment && {
+            provider: shipment.provider,
+            carrier: shipment.carrier,
+            courierName: shipment.courierName,
+            trackingNumber: shipment.trackingNumber,
+            awbCode: shipment.awbCode,
+            estimatedDelivery: shipment.estimatedDelivery,
+            shippedAt: shipment.shippedAt,
+            deliveredAt: shipment.deliveredAt,
+            trackingStatus: shipment.trackingStatus,
+            deliveryException: shipment.deliveryException,
+            events: shipment.events.map((e) => ({ status: e.status, occurredAt: e.occurredAt.toISOString(), location: e.location, activity: e.activity })),
+          }
+        }
+      />
 
       <div className="mt-10 grid gap-8 lg:grid-cols-2">
         <div className="border border-line p-6">
@@ -41,35 +61,56 @@ export default async function OrderDetailPage({ params }: PageProps) {
           <ul className="flex flex-col gap-3">
             {order.items.map((item) => (
               <li key={item.id} className="flex justify-between text-sm">
-                <span>
-                  {item.productName} {item.variantLabel && `(${item.variantLabel})`} × {item.quantity}
-                </span>
-                <span>{settings.currencySymbol} {Number(item.subtotal).toFixed(2)}</span>
+                <div>
+                  <span>
+                    {item.productName} {item.variantLabel && `(${item.variantLabel})`} × {item.quantity}
+                  </span>
+                  <ReturnItemAction
+                    orderItemId={item.id}
+                    canReturn={order.status === "DELIVERED"}
+                    alreadyRequested={item.returns.length > 0}
+                  />
+                </div>
+                <span>{formatINR(Number(item.subtotal))}</span>
               </li>
             ))}
           </ul>
           <div className="mt-4 flex flex-col gap-1.5 border-t border-line pt-4 text-sm">
             <div className="flex justify-between text-ink-soft">
               <span>Subtotal</span>
-              <span>{settings.currencySymbol} {Number(order.subtotal).toFixed(2)}</span>
+              <span>{formatINR(Number(order.subtotal))}</span>
             </div>
             {Number(order.discountAmount) > 0 && (
               <div className="flex justify-between text-success">
                 <span>Discount</span>
-                <span>-{settings.currencySymbol} {Number(order.discountAmount).toFixed(2)}</span>
+                <span>-{formatINR(Number(order.discountAmount))}</span>
               </div>
             )}
             <div className="flex justify-between text-ink-soft">
               <span>Shipping</span>
-              <span>{settings.currencySymbol} {Number(order.shippingFee).toFixed(2)}</span>
+              <span>{formatINR(Number(order.shippingFee))}</span>
             </div>
-            <div className="flex justify-between text-ink-soft">
-              <span>VAT</span>
-              <span>{settings.currencySymbol} {Number(order.taxAmount).toFixed(2)}</span>
-            </div>
+            {Number(order.cgstAmount) > 0 && (
+              <>
+                <div className="flex justify-between text-ink-soft">
+                  <span>CGST</span>
+                  <span>{formatINR(Number(order.cgstAmount))}</span>
+                </div>
+                <div className="flex justify-between text-ink-soft">
+                  <span>SGST</span>
+                  <span>{formatINR(Number(order.sgstAmount))}</span>
+                </div>
+              </>
+            )}
+            {Number(order.igstAmount) > 0 && (
+              <div className="flex justify-between text-ink-soft">
+                <span>IGST</span>
+                <span>{formatINR(Number(order.igstAmount))}</span>
+              </div>
+            )}
             <div className="flex justify-between border-t border-line pt-2 font-medium">
               <span>Total</span>
-              <span>{settings.currencySymbol} {Number(order.total).toFixed(2)}</span>
+              <span>{formatINR(Number(order.total))}</span>
             </div>
           </div>
         </div>

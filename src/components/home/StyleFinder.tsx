@@ -1,7 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
+import {
+  Sparkles,
+  Gem,
+  Briefcase,
+  Shirt,
+  Moon,
+  Palmtree,
+  Users,
+  Mars,
+  Venus,
+  Baby,
+  Crown,
+  Minus,
+  Flame,
+  Heart,
+  type LucideIcon,
+} from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { ScrollRail } from "@/components/ui/ScrollRail";
 import { ProductCard } from "@/components/product/ProductCard";
@@ -9,13 +25,32 @@ import type { ProductCard as ProductCardData } from "@/lib/data/products";
 import { cn } from "@/lib/utils";
 
 const OCCASIONS = ["wedding", "office", "casual", "evening", "resort"];
+const OCCASION_ICONS: Record<string, LucideIcon> = {
+  wedding: Gem,
+  office: Briefcase,
+  casual: Shirt,
+  evening: Moon,
+  resort: Palmtree,
+};
 const GENDERS = [
   { value: "any", label: "Any" },
   { value: "men", label: "Men" },
   { value: "women", label: "Women" },
   { value: "kids", label: "Kids" },
 ];
+const GENDER_ICONS: Record<string, LucideIcon> = {
+  any: Users,
+  men: Mars,
+  women: Venus,
+  kids: Baby,
+};
 const STYLES = ["classic", "minimal", "bold", "romantic"];
+const STYLE_ICONS: Record<string, LucideIcon> = {
+  classic: Crown,
+  minimal: Minus,
+  bold: Flame,
+  romantic: Heart,
+};
 const COLOR_SWATCHES = [
   { name: "Black", hex: "#14130f" },
   { name: "White", hex: "#faf7f2" },
@@ -46,24 +81,38 @@ function StepGrid({
   label,
   options,
   onSelect,
+  icons,
+  gridClassName = "grid-cols-2 sm:grid-cols-3",
 }: {
   label: string;
   options: { value: string; label: string }[];
   onSelect: (v: string) => void;
+  icons?: Record<string, LucideIcon>;
+  gridClassName?: string;
 }) {
   return (
     <div>
-      <p className="mb-5 text-center text-sm uppercase tracking-[0.14em] text-paper/70">{label}</p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {options.map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => onSelect(opt.value)}
-            className="aspect-[4/3] border border-paper/20 text-sm capitalize transition-colors duration-[var(--dur-1)] hover:border-gold hover:bg-gold hover:text-ink"
-          >
-            {opt.label}
-          </button>
-        ))}
+      <p className="mb-4 text-center text-sm uppercase tracking-[0.14em] text-paper/70">{label}</p>
+      <div className={cn("mx-auto grid max-w-xl gap-3", gridClassName)}>
+        {options.map((opt) => {
+          const Icon = icons?.[opt.value];
+          return (
+            <button
+              key={opt.value}
+              onClick={() => onSelect(opt.value)}
+              className="group flex flex-col items-center justify-center gap-2 rounded-xl border border-paper/15 bg-paper/[0.03] px-3 py-3.5 text-sm capitalize transition-all duration-[var(--dur-1)] hover:-translate-y-0.5 hover:border-gold hover:bg-gold hover:text-ink hover:shadow-[0_10px_28px_-10px_rgba(169,128,63,0.55)]"
+            >
+              {Icon && (
+                <Icon
+                  size={20}
+                  strokeWidth={1.5}
+                  className="text-gold-soft transition-colors duration-[var(--dur-1)] group-hover:text-ink"
+                />
+              )}
+              <span>{opt.label}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -114,13 +163,26 @@ export function StyleFinder() {
 
   return (
     <>
-      <section className="bg-ink py-20 text-paper">
-        <Container>
-          <div className="mb-10 text-center">
+      <section className="relative overflow-hidden bg-ink py-8 text-paper sm:py-10">
+        <div className="pointer-events-none absolute inset-0">
+          <div
+            className="absolute inset-0 opacity-[0.25]"
+            style={{
+              backgroundImage: "radial-gradient(rgba(216,195,154,0.35) 1px, transparent 1px)",
+              backgroundSize: "26px 26px",
+              maskImage: "radial-gradient(ellipse 80% 60% at 50% 40%, black 40%, transparent 100%)",
+              WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 40%, black 40%, transparent 100%)",
+            }}
+          />
+          <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-gold/25 blur-[100px]" />
+          <div className="absolute -bottom-32 -right-16 h-80 w-80 rounded-full bg-gold-soft/15 blur-[110px]" />
+        </div>
+        <Container className="relative">
+          <div className="mb-6 text-center">
             <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-gold-soft">
               <Sparkles size={14} /> Style Finder
             </p>
-            <h2 className="mt-3 font-display text-4xl sm:text-5xl">Find Your Style</h2>
+            <h2 className="mt-3 font-display text-3xl sm:text-4xl">Find Your Style</h2>
             <p className="mx-auto mt-3 max-w-lg text-sm text-paper/60">
               Answer a few questions — our stylists&apos; picks from the full collection, matched to you.
             </p>
@@ -128,34 +190,65 @@ export function StyleFinder() {
 
           {!results && (
             <div className="mx-auto max-w-2xl">
-              <div className="mb-8 flex items-center justify-center gap-1.5">
+              <div className="mb-6 flex items-center justify-center gap-1.5">
                 {STEPS.map((s, i) => (
                   <span key={s} className={cn("h-0.5 w-10 rounded-full transition-colors duration-[var(--dur-1)]", i <= step ? "bg-gold" : "bg-paper/20")} />
                 ))}
               </div>
 
-              {step === 0 && <StepGrid label="What's the occasion?" options={OCCASIONS.map((o) => ({ value: o, label: o }))} onSelect={(v) => setAnswer("occasion", v)} />}
-              {step === 1 && <StepGrid label="Shopping for" options={GENDERS} onSelect={(v) => setAnswer("gender", v)} />}
-              {step === 2 && <StepGrid label="Pick a style" options={STYLES.map((s) => ({ value: s, label: s }))} onSelect={(v) => setAnswer("style", v)} />}
+              {step === 0 && (
+                <StepGrid
+                  label="What's the occasion?"
+                  options={OCCASIONS.map((o) => ({ value: o, label: o }))}
+                  onSelect={(v) => setAnswer("occasion", v)}
+                  icons={OCCASION_ICONS}
+                  gridClassName="grid-cols-3 sm:grid-cols-5"
+                />
+              )}
+              {step === 1 && (
+                <StepGrid
+                  label="Shopping for"
+                  options={GENDERS}
+                  onSelect={(v) => setAnswer("gender", v)}
+                  icons={GENDER_ICONS}
+                  gridClassName="grid-cols-2 sm:grid-cols-4"
+                />
+              )}
+              {step === 2 && (
+                <StepGrid
+                  label="Pick a style"
+                  options={STYLES.map((s) => ({ value: s, label: s }))}
+                  onSelect={(v) => setAnswer("style", v)}
+                  icons={STYLE_ICONS}
+                  gridClassName="grid-cols-2 sm:grid-cols-4"
+                />
+              )}
               {step === 3 && (
                 <div>
-                  <p className="mb-5 text-center text-sm uppercase tracking-[0.14em] text-paper/70">Favourite colour</p>
-                  <div className="flex flex-wrap justify-center gap-4">
+                  <p className="mb-4 text-center text-sm uppercase tracking-[0.14em] text-paper/70">Favourite colour</p>
+                  <div className="mx-auto flex max-w-xl flex-wrap justify-center gap-5">
                     {COLOR_SWATCHES.map((c) => (
-                      <button key={c.name} onClick={() => setAnswer("color", c.name)} className="flex flex-col items-center gap-2">
+                      <button key={c.name} onClick={() => setAnswer("color", c.name)} className="group flex flex-col items-center gap-2">
                         <span
-                          className="h-12 w-12 rounded-full ring-1 ring-paper/30 transition-transform duration-[var(--dur-1)] hover:scale-105"
+                          className="h-11 w-11 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.35)] ring-1 ring-paper/30 transition-all duration-[var(--dur-1)] group-hover:scale-110 group-hover:ring-2 group-hover:ring-gold"
                           style={{ backgroundColor: c.hex }}
                         />
-                        <span className="text-xs text-paper/70">{c.name}</span>
+                        <span className="text-xs text-paper/70 transition-colors duration-[var(--dur-1)] group-hover:text-gold-soft">{c.name}</span>
                       </button>
                     ))}
                   </div>
                 </div>
               )}
-              {step === 4 && <StepGrid label="Your budget" options={BUDGETS} onSelect={(v) => setAnswer("budget", v)} />}
+              {step === 4 && (
+                <StepGrid
+                  label="Your budget"
+                  options={BUDGETS}
+                  onSelect={(v) => setAnswer("budget", v)}
+                  gridClassName="grid-cols-2 sm:grid-cols-4"
+                />
+              )}
 
-              <div className="mt-10 flex items-center justify-center gap-6 text-xs uppercase tracking-[0.12em] text-paper/50">
+              <div className="mt-6 flex items-center justify-center gap-6 text-xs uppercase tracking-[0.12em] text-paper/50">
                 {step > 0 && (
                   <button onClick={() => setStep((s) => s - 1)} className="hover:text-paper">
                     ← Back
@@ -166,14 +259,14 @@ export function StyleFinder() {
                 </button>
               </div>
 
-              {loading && <p className="mt-6 text-center text-sm text-paper/60">Finding your style...</p>}
+              {loading && <p className="mt-4 text-center text-sm text-paper/60">Finding your style...</p>}
             </div>
           )}
         </Container>
       </section>
 
       {results && (
-        <section className="bg-paper py-16">
+        <section className="bg-paper py-12">
           <Container>
             <div className="mb-8 flex flex-col items-center gap-4 text-center sm:flex-row sm:justify-between sm:text-left">
               <div>
@@ -189,7 +282,7 @@ export function StyleFinder() {
             ) : (
               <ScrollRail>
                 {results.map((p) => (
-                  <ProductCard key={p.id} product={p} className="w-[62%] shrink-0 snap-start sm:w-[38%] lg:w-[23%]" />
+                  <ProductCard key={p.id} product={p} className="w-44 shrink-0 snap-start sm:w-52 lg:w-60" />
                 ))}
               </ScrollRail>
             )}

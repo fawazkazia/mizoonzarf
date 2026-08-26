@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { addressSchema } from "@/lib/validation/checkout";
+import { addressSchema, addressObjectSchema } from "@/lib/validation/checkout";
 
-const createAddressSchema = addressSchema.extend({ label: z.string().optional() });
+const updateAddressSchema = addressObjectSchema.partial().extend({
+  id: z.string(),
+  isDefault: z.boolean().optional(),
+});
 
 export async function GET() {
   const session = await auth();
@@ -21,7 +24,7 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Please sign in." }, { status: 401 });
 
-  const body = createAddressSchema.safeParse(await req.json());
+  const body = addressSchema.safeParse(await req.json());
   if (!body.success) return NextResponse.json({ error: body.error.issues[0].message }, { status: 400 });
 
   const count = await db.address.count({ where: { userId: session.user.id } });
@@ -48,13 +51,17 @@ export async function PATCH(req: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Please sign in." }, { status: 401 });
 
-  const { id, isDefault } = await req.json();
-  if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
+  const body = updateAddressSchema.safeParse(await req.json());
+  if (!body.success) return NextResponse.json({ error: body.error.issues[0].message }, { status: 400 });
+  const { id, isDefault, ...fields } = body.data;
 
   if (isDefault) {
     await db.address.updateMany({ where: { userId: session.user.id }, data: { isDefault: false } });
   }
-  await db.address.updateMany({ where: { id, userId: session.user.id }, data: { isDefault: Boolean(isDefault) } });
+  await db.address.updateMany({
+    where: { id, userId: session.user.id },
+    data: { ...fields, ...(isDefault !== undefined ? { isDefault } : {}) },
+  });
 
   return NextResponse.json({ ok: true });
 }

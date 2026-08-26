@@ -9,6 +9,11 @@ function normalize(input: BannerInput) {
   return {
     title: input.title,
     subtitle: input.subtitle || null,
+    titleColor: input.titleColor || null,
+    subtitleColor: input.subtitleColor || null,
+    titleSize: input.titleSize,
+    contentPositionX: input.contentPositionX ?? null,
+    contentPositionY: input.contentPositionY ?? null,
     imageUrl: input.imageUrl,
     mobileImageUrl: input.mobileImageUrl || null,
     ctaText: input.ctaText || null,

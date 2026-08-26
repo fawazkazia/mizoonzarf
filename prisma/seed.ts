@@ -13,6 +13,41 @@ function art(seed: string, kind: string, label?: string, caption?: string) {
   return `/api/art?${params.toString()}`;
 }
 
+function banner(path: string) {
+  return `/images/banners/${path}`;
+}
+
+/** Dummy photography for homepage/nav sections — keyed by category slug so
+ * both top-level categories and the specific children MEGA_MENU_CONFIG picks
+ * as a vertical's feature image get a real photo instead of generated art. */
+const CATEGORY_IMAGES: Record<string, string> = {
+  men: banner("category-men.jpg"),
+  women: banner("category-women.jpg"),
+  kids: banner("category-kids.jpg"),
+  perfumes: banner("category-perfumes.jpg"),
+  jewellery: banner("category-jewellery.jpg"),
+  "mens-traditional": banner("mega-mens-traditional.jpg"),
+  "womens-dresses": banner("mega-womens-dresses.jpg"),
+  "perfumes-women": banner("mega-perfumes-women.jpg"),
+  "jewellery-necklaces": banner("mega-jewellery-necklaces.jpg"),
+};
+
+const HERO_IMAGES = [
+  banner("hero-newseason.jpg"),
+  banner("hero-men.jpg"),
+  banner("hero-women.jpg"),
+  banner("hero-perfume.jpg"),
+  banner("hero-kids.jpg"),
+  banner("hero-sale.jpg"),
+];
+
+const COLLECTION_IMAGES: Record<string, string> = {
+  "wedding-edit": banner("collection-wedding-edit.jpg"),
+  "summer-collection": banner("collection-summer.jpg"),
+  "new-season": banner("collection-new-season.jpg"),
+  "perfume-edit": banner("collection-perfume-edit.jpg"),
+};
+
 function slugify(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
@@ -79,7 +114,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "mens-shirts",
     brand: "Aurelia House",
     gender: "MEN",
-    price: 249,
+    price: 5999,
     description: "A crisp, tailored shirt cut from breathable cotton poplin with a modern slim fit through the body and sleeve.",
     shortDescription: "Cotton poplin shirt with a modern slim fit.",
     tags: ["office", "classic", "wedding"],
@@ -97,7 +132,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "mens-tshirts",
     brand: "Solstice",
     gender: "MEN",
-    price: 89,
+    price: 1799,
     description: "Our signature crewneck tee in heavyweight combed cotton — a wardrobe staple built to last.",
     shortDescription: "Heavyweight combed cotton crewneck tee.",
     tags: ["casual", "minimal"],
@@ -113,7 +148,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "mens-tshirts",
     brand: "Solstice",
     gender: "MEN",
-    price: 99,
+    price: 1999,
     description: "Soft-touch jersey tee featuring a subtle embroidered logo at the chest.",
     shortDescription: "Soft jersey tee with embroidered logo.",
     tags: ["casual", "bold"],
@@ -129,7 +164,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "mens-trousers",
     brand: "Aurelia House",
     gender: "MEN",
-    price: 279,
+    price: 5999,
     description: "Smart-casual chinos in a straight leg silhouette, finished with a soft brushed cotton twill.",
     shortDescription: "Brushed cotton twill chinos, straight leg.",
     tags: ["office", "classic"],
@@ -145,7 +180,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "mens-trousers",
     brand: "Velure",
     gender: "MEN",
-    price: 319,
+    price: 6999,
     description: "Utility-inspired cargo trousers with a relaxed fit and reinforced pockets.",
     shortDescription: "Relaxed-fit cargo trousers with utility pockets.",
     tags: ["casual", "bold"],
@@ -161,7 +196,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "mens-jeans",
     brand: "Velure",
     gender: "MEN",
-    price: 329,
+    price: 7499,
     description: "Premium stretch denim finished with a subtle wash and slim tapered leg.",
     shortDescription: "Stretch denim jeans, slim tapered leg.",
     tags: ["casual", "classic"],
@@ -178,7 +213,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "mens-jeans",
     brand: "Solstice",
     gender: "MEN",
-    price: 299,
+    price: 6999,
     description: "A timeless straight-leg jean in rigid selvedge denim that softens beautifully with wear.",
     shortDescription: "Rigid selvedge denim, straight leg.",
     tags: ["casual", "classic"],
@@ -194,7 +229,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "mens-traditional",
     brand: "Casa Bloom",
     gender: "MEN",
-    price: 459,
+    price: 12999,
     description: "A handcrafted kandura in fine cotton blend with subtle tone-on-tone embroidery detailing.",
     shortDescription: "Fine cotton blend kandura with embroidery.",
     tags: ["wedding", "classic", "evening"],
@@ -212,7 +247,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "mens-accessories",
     brand: "Étoile",
     gender: "MEN",
-    price: 189,
+    price: 3999,
     description: "A full-grain leather belt with a reversible buckle for effortless day-to-night styling.",
     shortDescription: "Full-grain reversible leather belt.",
     tags: ["office", "classic"],
@@ -226,7 +261,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "mens-shirts",
     brand: "Aurelia House",
     gender: "MEN",
-    price: 349,
+    price: 8499,
     description: "Lightweight merino wool sweater with a fine-gauge knit, perfect for layering.",
     shortDescription: "Fine-gauge merino wool crew sweater.",
     tags: ["office", "classic", "resort"],
@@ -241,7 +276,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "mens-shirts",
     brand: "Casa Bloom",
     gender: "MEN",
-    price: 219,
+    price: 4999,
     description: "Breathable linen-cotton blend shirt with a relaxed camp collar — resortwear at its finest.",
     shortDescription: "Linen-cotton camp collar resort shirt.",
     tags: ["resort", "casual"],
@@ -256,7 +291,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "mens-accessories",
     brand: "Velure",
     gender: "MEN",
-    price: 549,
+    price: 14999,
     description: "A refined bomber jacket with a quilted lining and ribbed cuffs for cool-weather layering.",
     shortDescription: "Quilted bomber jacket with ribbed cuffs.",
     tags: ["evening", "bold"],
@@ -274,7 +309,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "womens-dresses",
     brand: "Maison Noir",
     gender: "WOMEN",
-    price: 549,
+    price: 14999,
     description: "An elegant wrap dress in fluid silk, cut to fall gracefully to a flattering midi length.",
     shortDescription: "Fluid silk wrap dress, midi length.",
     tags: ["evening", "romantic", "wedding"],
@@ -292,7 +327,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "womens-dresses",
     brand: "Casa Bloom",
     gender: "WOMEN",
-    price: 429,
+    price: 9999,
     description: "A romantic floral-print maxi dress in airy chiffon with a fitted waist and flowing skirt.",
     shortDescription: "Floral chiffon maxi dress, fitted waist.",
     tags: ["resort", "romantic"],
@@ -308,7 +343,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "womens-dresses",
     brand: "Maison Noir",
     gender: "WOMEN",
-    price: 479,
+    price: 11499,
     description: "A sharply tailored blazer dress with statement shoulders and a cinched waist.",
     shortDescription: "Tailored blazer dress with cinched waist.",
     tags: ["office", "bold"],
@@ -323,7 +358,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "womens-tops",
     brand: "Étoile",
     gender: "WOMEN",
-    price: 219,
+    price: 4999,
     description: "A liquid satin top with a soft draped cowl neckline — effortlessly elevated.",
     shortDescription: "Draped cowl neck satin top.",
     tags: ["evening", "minimal"],
@@ -338,7 +373,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "womens-tops",
     brand: "Solstice",
     gender: "WOMEN",
-    price: 149,
+    price: 2999,
     description: "A soft ribbed knit top with a flattering fitted silhouette, perfect for everyday layering.",
     shortDescription: "Fitted ribbed knit top.",
     tags: ["casual", "minimal"],
@@ -354,7 +389,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "womens-abayas",
     brand: "Casa Bloom",
     gender: "WOMEN",
-    price: 589,
+    price: 16499,
     description: "An elegant open abaya in flowing nida fabric with hand-finished crystal embellishment along the sleeves.",
     shortDescription: "Nida abaya with crystal-embellished sleeves.",
     tags: ["wedding", "evening", "classic"],
@@ -372,7 +407,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "womens-abayas",
     brand: "Maison Noir",
     gender: "WOMEN",
-    price: 399,
+    price: 8999,
     description: "A minimalist everyday abaya in soft-touch nida with a relaxed, flattering cut.",
     shortDescription: "Minimalist everyday nida abaya.",
     tags: ["casual", "minimal"],
@@ -387,7 +422,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "womens-traditional",
     brand: "Casa Bloom",
     gender: "WOMEN",
-    price: 469,
+    price: 10999,
     description: "A statement kaftan in silk-blend fabric with intricate hand embroidery at the neckline.",
     shortDescription: "Silk-blend kaftan with hand embroidery.",
     tags: ["wedding", "evening", "romantic"],
@@ -402,7 +437,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "womens-traditional",
     brand: "Étoile",
     gender: "WOMEN",
-    price: 389,
+    price: 8499,
     description: "A two-piece pleated skirt and top set finished with delicate embroidery detail.",
     shortDescription: "Two-piece pleated skirt set with embroidery.",
     tags: ["wedding", "romantic"],
@@ -418,7 +453,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "womens-accessories",
     brand: "Étoile",
     gender: "WOMEN",
-    price: 199,
+    price: 3999,
     description: "A luxurious silk twill scarf finished with an exclusive artisan-inspired print.",
     shortDescription: "Silk twill scarf with artisan print.",
     tags: ["classic", "office"],
@@ -431,7 +466,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "womens-accessories",
     brand: "Maison Noir",
     gender: "WOMEN",
-    price: 649,
+    price: 17499,
     description: "A structured top-handle bag in pebbled leather with gold-tone hardware.",
     shortDescription: "Pebbled leather top-handle bag.",
     tags: ["office", "classic"],
@@ -441,13 +476,83 @@ const PRODUCTS: ProductSpec[] = [
     isFeatured: true,
   },
 
+  // ---- WOMEN: COSMETICS ----
+  {
+    name: "Velvet Matte Liquid Lipstick",
+    categorySlug: "womens-cosmetics",
+    brand: "Étoile",
+    gender: "WOMEN",
+    price: 1999,
+    description: "A weightless liquid lipstick that sets to a soft matte finish and wears comfortably for hours without drying out the lips.",
+    shortDescription: "Long-wearing matte liquid lipstick, weightless finish.",
+    tags: ["makeup", "bold", "evening"],
+    colors: [{ name: "Ruby Red", hex: "#8c2b2b" }, { name: "Nude Blush", hex: "#c98b7a" }, { name: "Terracotta", hex: "#b1573f" }],
+    material: "Vegan, Cruelty-Free Formula",
+    careInstructions: "Store upright in a cool, dry place away from direct sunlight.",
+  },
+  {
+    name: "Second Skin Foundation",
+    categorySlug: "womens-cosmetics",
+    brand: "Casa Bloom",
+    gender: "WOMEN",
+    price: 3499,
+    description: "A buildable, natural-finish foundation that evens out skin tone while letting texture show through for an effortless second-skin look.",
+    shortDescription: "Buildable natural-finish foundation.",
+    tags: ["makeup", "minimal"],
+    colors: [{ name: "Ivory", hex: "#f1e1c6" }, { name: "Beige", hex: "#e0c19f" }, { name: "Honey", hex: "#c99567" }, { name: "Caramel", hex: "#9c6b42" }],
+    saleSizes: ["One Size"],
+    sizes: ["One Size"],
+    material: "Hyaluronic Acid, SPF 20",
+    careInstructions: "Store below 25°C, away from direct sunlight.",
+  },
+  {
+    name: "Radiance Eyeshadow Palette",
+    categorySlug: "womens-cosmetics",
+    brand: "Maison Noir",
+    gender: "WOMEN",
+    price: 4499,
+    description: "A twelve-shade eyeshadow palette blending richly pigmented mattes and shimmers for effortless day-to-night looks.",
+    shortDescription: "12-shade matte and shimmer eyeshadow palette.",
+    tags: ["makeup", "evening", "bold"],
+    colors: [{ name: "Sunset Edit", hex: "#c9895c" }],
+    material: "Talc-Free Formula",
+    careInstructions: "Close compact fully after each use to prevent shade breakage.",
+    isFeatured: true,
+  },
+  {
+    name: "Hydrating Vitamin C Serum",
+    categorySlug: "womens-cosmetics",
+    brand: "Solstice",
+    gender: "WOMEN",
+    price: 4599,
+    description: "A brightening facial serum with vitamin C and hyaluronic acid that visibly evens tone and boosts radiance with daily use.",
+    shortDescription: "Brightening vitamin C and hyaluronic acid serum.",
+    tags: ["skincare", "minimal"],
+    sizes: ["30ml"],
+    material: "Vitamin C, Hyaluronic Acid",
+    careInstructions: "Store in a cool, dry place. Use within 6 months of opening.",
+  },
+  {
+    name: "Volumizing Lash Mascara",
+    categorySlug: "womens-cosmetics",
+    brand: "Velure",
+    gender: "WOMEN",
+    price: 1599,
+    description: "A buildable, clump-free mascara that lifts and volumizes lashes for a dramatic, all-day finish.",
+    shortDescription: "Buildable volumizing mascara, clump-free formula.",
+    tags: ["makeup", "casual"],
+    colors: [{ name: "Blackest Black", hex: "#141414" }],
+    material: "Fibre-Infused Formula",
+    careInstructions: "Replace every 3 months after opening.",
+  },
+
   // ---- KIDS ----
   {
     name: "Boys Print Polo Shirt",
     categorySlug: "kids-boys",
     brand: "Solstice",
     gender: "KIDS",
-    price: 89,
+    price: 1799,
     description: "A soft cotton polo shirt with a playful print, perfect for everyday adventures.",
     shortDescription: "Cotton polo shirt with playful print.",
     tags: ["casual"],
@@ -462,7 +567,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "kids-boys",
     brand: "Velure",
     gender: "KIDS",
-    price: 79,
+    price: 1599,
     description: "Durable cotton cargo shorts built for play, with reinforced knees and roomy pockets.",
     shortDescription: "Durable cotton cargo shorts.",
     tags: ["casual"],
@@ -478,7 +583,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "kids-boys",
     brand: "Aurelia House",
     gender: "KIDS",
-    price: 159,
+    price: 3299,
     description: "A smart shirt and trouser set for special occasions, tailored just for little gentlemen.",
     shortDescription: "Occasion shirt and trouser set.",
     tags: ["wedding", "classic"],
@@ -493,7 +598,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "kids-boys",
     brand: "Solstice",
     gender: "KIDS",
-    price: 119,
+    price: 2499,
     description: "A cosy fleece hoodie with a fun graphic print, perfect for cooler days.",
     shortDescription: "Fleece hoodie with graphic print.",
     tags: ["casual"],
@@ -508,7 +613,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "kids-girls",
     brand: "Casa Bloom",
     gender: "KIDS",
-    price: 189,
+    price: 4599,
     description: "A twirl-worthy tulle dress with a satin bodice, made for birthdays and celebrations.",
     shortDescription: "Tulle party dress with satin bodice.",
     tags: ["wedding", "romantic"],
@@ -525,7 +630,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "kids-girls",
     brand: "Casa Bloom",
     gender: "KIDS",
-    price: 109,
+    price: 2299,
     description: "A breezy cotton sundress in a cheerful floral print for warm days out.",
     shortDescription: "Cotton floral sundress.",
     tags: ["resort", "casual"],
@@ -540,7 +645,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "kids-girls",
     brand: "Aurelia House",
     gender: "KIDS",
-    price: 139,
+    price: 2999,
     description: "A soft knit cardigan and dress set, perfect for layering through the seasons.",
     shortDescription: "Knit cardigan and dress two-piece set.",
     tags: ["casual", "classic"],
@@ -555,7 +660,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "kids-girls",
     brand: "Casa Bloom",
     gender: "KIDS",
-    price: 199,
+    price: 4599,
     description: "A festive embroidered dress designed for celebrations, mirroring our women's traditional edit.",
     shortDescription: "Embroidered festive dress for celebrations.",
     tags: ["wedding", "classic"],
@@ -572,7 +677,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "perfumes-men",
     brand: "Maison Noir",
     gender: "MEN",
-    price: 429,
+    price: 11999,
     description: "A rich, smoky oud fragrance layered with amber and warm spice — bold and unforgettable.",
     shortDescription: "Smoky oud fragrance with amber and spice.",
     tags: ["evening", "bold"],
@@ -587,7 +692,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "perfumes-men",
     brand: "Solstice",
     gender: "MEN",
-    price: 289,
+    price: 6999,
     description: "A crisp, energising blend of citrus and vetiver for everyday wear.",
     shortDescription: "Crisp citrus and vetiver everyday cologne.",
     tags: ["office", "casual"],
@@ -602,7 +707,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "perfumes-men",
     brand: "Velure",
     gender: "MEN",
-    price: 379,
+    price: 9499,
     description: "A confident, masculine scent built around rich leather and warm tobacco leaf.",
     shortDescription: "Masculine scent with leather and tobacco.",
     tags: ["evening", "bold"],
@@ -616,7 +721,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "perfumes-women",
     brand: "Casa Bloom",
     gender: "WOMEN",
-    price: 399,
+    price: 9999,
     description: "A romantic bouquet of Damask rose and peony, softened with warm musk.",
     shortDescription: "Romantic rose and peony fragrance.",
     tags: ["romantic", "evening"],
@@ -631,7 +736,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "perfumes-women",
     brand: "Maison Noir",
     gender: "WOMEN",
-    price: 349,
+    price: 8499,
     description: "An intoxicating blend of night-blooming jasmine and golden amber.",
     shortDescription: "Jasmine and amber evening fragrance.",
     tags: ["evening", "romantic"],
@@ -646,7 +751,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "perfumes-women",
     brand: "Étoile",
     gender: "WOMEN",
-    price: 269,
+    price: 6499,
     description: "A soft, powdery vanilla fragrance with a delicate orchid heart — perfect for everyday elegance.",
     shortDescription: "Soft vanilla and orchid everyday fragrance.",
     tags: ["casual", "office"],
@@ -660,7 +765,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "perfumes-unisex",
     brand: "Solstice",
     gender: "UNISEX",
-    price: 259,
+    price: 5999,
     description: "A clean, understated white musk fragrance designed to be worn by everyone.",
     shortDescription: "Clean white musk fragrance for everyone.",
     tags: ["casual", "minimal"],
@@ -674,7 +779,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "perfumes-unisex",
     brand: "Velure",
     gender: "UNISEX",
-    price: 319,
+    price: 7699,
     description: "A warm, resinous amber and woods composition that transitions effortlessly from day to night.",
     shortDescription: "Warm amber and woods unisex fragrance.",
     tags: ["evening", "classic"],
@@ -690,7 +795,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "jewellery-necklaces",
     brand: "Étoile",
     gender: "WOMEN",
-    price: 249,
+    price: 5999,
     description: "A delicate layered chain necklace finished in 18k gold plating for everyday sparkle.",
     shortDescription: "18k gold-plated layered chain necklace.",
     tags: ["classic", "office"],
@@ -704,7 +809,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "jewellery-necklaces",
     brand: "Maison Noir",
     gender: "WOMEN",
-    price: 289,
+    price: 6699,
     description: "A timeless freshwater pearl pendant on a fine gold-tone chain.",
     shortDescription: "Freshwater pearl pendant necklace.",
     tags: ["classic", "wedding"],
@@ -719,7 +824,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "jewellery-rings",
     brand: "Étoile",
     gender: "WOMEN",
-    price: 219,
+    price: 4999,
     description: "A bold statement ring set with a faceted stone in a vintage-inspired setting.",
     shortDescription: "Bold faceted stone cocktail ring.",
     tags: ["evening", "bold"],
@@ -733,7 +838,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "jewellery-rings",
     brand: "Solstice",
     gender: "WOMEN",
-    price: 159,
+    price: 3499,
     description: "A set of three slim stacking rings designed to be worn together or alone.",
     shortDescription: "Set of three slim stacking rings.",
     tags: ["minimal", "casual"],
@@ -747,7 +852,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "jewellery-bracelets",
     brand: "Velure",
     gender: "WOMEN",
-    price: 199,
+    price: 4399,
     description: "A bold chunky chain bracelet that makes a statement on its own.",
     shortDescription: "Bold chunky gold-tone chain bracelet.",
     tags: ["bold", "evening"],
@@ -760,7 +865,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "jewellery-bracelets",
     brand: "Casa Bloom",
     gender: "WOMEN",
-    price: 129,
+    price: 2699,
     description: "A set of three delicate beaded bracelets in soft, wearable tones.",
     shortDescription: "Set of three delicate beaded bracelets.",
     tags: ["minimal", "casual", "resort"],
@@ -775,7 +880,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "jewellery-earrings",
     brand: "Maison Noir",
     gender: "WOMEN",
-    price: 229,
+    price: 5499,
     description: "Elegant crystal drop earrings that catch the light beautifully for evening occasions.",
     shortDescription: "Crystal drop earrings for evening wear.",
     tags: ["evening", "wedding", "romantic"],
@@ -790,7 +895,7 @@ const PRODUCTS: ProductSpec[] = [
     categorySlug: "jewellery-earrings",
     brand: "Étoile",
     gender: "WOMEN",
-    price: 169,
+    price: 3899,
     description: "Classic medium-sized gold hoops that work from morning meetings to evening dinners.",
     shortDescription: "Classic medium gold hoop earrings.",
     tags: ["classic", "office", "casual"],
@@ -823,6 +928,7 @@ const CATEGORY_TREE: { name: string; slug: string; gender: Gender | null; childr
       { name: "Tops", slug: "womens-tops" },
       { name: "Abayas", slug: "womens-abayas" },
       { name: "Traditional Wear", slug: "womens-traditional" },
+      { name: "Cosmetics", slug: "womens-cosmetics" },
       { name: "Accessories", slug: "womens-accessories" },
     ],
   },
@@ -873,6 +979,7 @@ async function main() {
     db.order.deleteMany(),
     db.address.deleteMany(),
     db.productVariant.deleteMany(),
+    db.warehouse.deleteMany(),
     db.productImage.deleteMany(),
     db.product.deleteMany(),
     db.collection.deleteMany(),
@@ -896,13 +1003,13 @@ async function main() {
         slug: top.slug,
         gender: top.gender ?? undefined,
         sortOrder: i,
-        imageUrl: art(top.slug, "category", top.name),
+        imageUrl: CATEGORY_IMAGES[top.slug] ?? art(top.slug, "category", top.name),
         children: {
           create: top.children.map((c, j) => ({
             name: c.name,
             slug: c.slug,
             sortOrder: j,
-            imageUrl: art(c.slug, "category", c.name),
+            imageUrl: CATEGORY_IMAGES[c.slug] ?? art(c.slug, "category", c.name),
           })),
         },
       },
@@ -924,9 +1031,10 @@ async function main() {
     { name: "Wedding Edit", slug: "wedding-edit", description: "Statement pieces for your most memorable occasions." },
     { name: "Summer Collection", slug: "summer-collection", description: "Lightweight fabrics and breezy silhouettes for warm days." },
     { name: "New Season", slug: "new-season", description: "Fresh arrivals across every category." },
+    { name: "Perfume Edit", slug: "perfume-edit", description: "Signature scents to complete every look." },
   ];
   for (const [i, c] of collections.entries()) {
-    await db.collection.create({ data: { ...c, sortOrder: i, imageUrl: art(c.slug, "collection", c.name) } });
+    await db.collection.create({ data: { ...c, sortOrder: i, imageUrl: COLLECTION_IMAGES[c.slug] ?? art(c.slug, "collection", c.name) } });
   }
 
   console.log("Creating products...");
@@ -982,6 +1090,15 @@ async function main() {
     });
   }
 
+  console.log("Creating default warehouse and backfilling stock...");
+  const mainWarehouse = await db.warehouse.create({
+    data: { name: "Main Warehouse", code: "MAIN", isActive: true, isDefault: true },
+  });
+  const allVariants = await db.productVariant.findMany({ select: { id: true, stock: true } });
+  await db.variantWarehouseStock.createMany({
+    data: allVariants.map((v) => ({ variantId: v.id, warehouseId: mainWarehouse.id, quantity: v.stock })),
+  });
+
   console.log("Adding sample reviews...");
   const sampleProducts = await db.product.findMany({ take: 20, orderBy: { createdAt: "asc" } });
   const reviewTexts = [
@@ -1012,16 +1129,19 @@ async function main() {
   console.log("Creating banners, promotions & coupons...");
   const now = new Date();
   const heroSlides: { title: string; subtitle: string; ctaText: string; ctaLink: string }[] = [
-    { title: "Define Your Style", subtitle: "New Season", ctaText: "Shop Men", ctaLink: "/men" },
-    { title: "Fashion for Every Moment", subtitle: "The Edit", ctaText: "Shop Women", ctaLink: "/women" },
-    { title: "The Fragrance Edit", subtitle: "Perfumes", ctaText: "Discover Scents", ctaLink: "/perfumes" },
+    { title: "Discover The Latest Collection", subtitle: "New Season", ctaText: "Shop Now", ctaLink: "/collections/new-season" },
+    { title: "Modern Styles For Every Occasion", subtitle: "Men's Collection", ctaText: "Shop Men", ctaLink: "/men" },
+    { title: "Fashion for Every Moment", subtitle: "Women's Collection", ctaText: "Shop Women", ctaLink: "/women" },
+    { title: "The Fragrance Edit", subtitle: "Perfume Collection", ctaText: "Discover Scents", ctaLink: "/perfumes" },
+    { title: "Everyday Styles For Little Ones", subtitle: "Kids Collection", ctaText: "Shop Kids", ctaLink: "/kids" },
+    { title: "Up To 30% Off", subtitle: "Sale", ctaText: "Shop Now", ctaLink: "/sale" },
   ];
   for (const [i, slide] of heroSlides.entries()) {
     await db.banner.create({
       data: {
         title: slide.title,
         subtitle: slide.subtitle,
-        imageUrl: art(`hero-${i}`, "hero"),
+        imageUrl: HERO_IMAGES[i] ?? art(`hero-${i}`, "hero"),
         ctaText: slide.ctaText,
         ctaLink: slide.ctaLink,
         position: "HERO" as BannerPosition,
@@ -1034,7 +1154,7 @@ async function main() {
     data: {
       title: "Up To 40% Off",
       subtitle: "Selected Styles",
-      imageUrl: art("promo-sale", "banner"),
+      imageUrl: banner("promo-sale.jpg"),
       ctaText: "Shop the Sale",
       ctaLink: "/sale",
       position: "PROMO" as BannerPosition,
@@ -1069,11 +1189,11 @@ async function main() {
   });
   await db.coupon.create({
     data: {
-      code: "SAVE50",
-      description: "AED 50 off orders over AED 300",
+      code: "SAVE100",
+      description: "₹100 off orders over ₹999",
       discountType: "FIXED",
-      discountValue: 50,
-      minOrderValue: 300,
+      discountValue: 100,
+      minOrderValue: 999,
       startDate: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 30),
       endDate: new Date(now.getTime() + 1000 * 60 * 60 * 24 * 365),
       isActive: true,
@@ -1100,11 +1220,37 @@ async function main() {
 
   console.log("Creating settings...");
   await db.setting.create({ data: { key: "brandName", value: "Maison Luxe", group: "brand" } });
-  await db.setting.create({ data: { key: "whatsappNumber", value: "971501234567", group: "general" } });
-  await db.setting.create({ data: { key: "supportEmail", value: "care@maisonluxe.ae", group: "general" } });
+  await db.setting.create({ data: { key: "whatsappNumber", value: "919501234567", group: "general" } });
+  await db.setting.create({ data: { key: "supportEmail", value: "care@maisonluxe.in", group: "general" } });
+
+  console.log("Creating notification templates...");
+  const notificationTemplates: { key: string; channel: "EMAIL" | "SMS"; subject?: string; body: string; variables: string[] }[] = [
+    { key: "order_placed", channel: "EMAIL", subject: "We've received your order {{order_number}}", body: "Hi {{customer_name}}, thanks for your order {{order_number}} — total {{order_total}}. We'll let you know as soon as it ships.", variables: ["customer_name", "order_number", "order_total"] },
+    { key: "order_placed", channel: "SMS", body: "Order {{order_number}} received - total {{order_total}}. Thanks for shopping with us!", variables: ["order_number", "order_total"] },
+    { key: "payment_confirmed", channel: "EMAIL", subject: "Payment confirmed for order {{order_number}}", body: "Your payment for order {{order_number}} ({{order_total}}) has been confirmed. We're preparing your order now.", variables: ["order_number", "order_total"] },
+    { key: "payment_confirmed", channel: "SMS", body: "Payment confirmed for order {{order_number}} ({{order_total}}).", variables: ["order_number", "order_total"] },
+    { key: "order_shipped", channel: "EMAIL", subject: "Your order {{order_number}} has shipped", body: "Good news — order {{order_number}} is on its way.", variables: ["order_number"] },
+    { key: "order_shipped", channel: "SMS", body: "Order {{order_number}} has shipped and is on its way.", variables: ["order_number"] },
+    { key: "order_out_for_delivery", channel: "EMAIL", subject: "Order {{order_number}} is out for delivery", body: "Your order {{order_number}} is out for delivery today.", variables: ["order_number"] },
+    { key: "order_out_for_delivery", channel: "SMS", body: "Order {{order_number}} is out for delivery today.", variables: ["order_number"] },
+    { key: "order_delivered", channel: "EMAIL", subject: "Order {{order_number}} delivered", body: "Order {{order_number}} has been delivered. Enjoy!", variables: ["order_number"] },
+    { key: "order_delivered", channel: "SMS", body: "Order {{order_number}} has been delivered. Enjoy!", variables: ["order_number"] },
+    { key: "order_cancelled", channel: "EMAIL", subject: "Order {{order_number}} cancelled", body: "Your order {{order_number}} has been cancelled.", variables: ["order_number"] },
+    { key: "order_cancelled", channel: "SMS", body: "Order {{order_number}} has been cancelled.", variables: ["order_number"] },
+    { key: "order_refunded", channel: "EMAIL", subject: "Order {{order_number}} refunded", body: "Your payment for order {{order_number}} ({{order_total}}) has been refunded.", variables: ["order_number", "order_total"] },
+    { key: "order_refunded", channel: "SMS", body: "Order {{order_number}} has been refunded.", variables: ["order_number"] },
+    { key: "contact_form_submission", channel: "EMAIL", subject: "New contact form message from {{customer_name}}", body: "From: {{customer_name}} ({{customer_email}})\n\n{{message}}", variables: ["customer_name", "customer_email", "message"] },
+  ];
+  for (const t of notificationTemplates) {
+    await db.notificationTemplate.upsert({
+      where: { key_channel: { key: t.key, channel: t.channel } },
+      update: {},
+      create: t,
+    });
+  }
 
   console.log("Creating admin user...");
-  const adminEmail = "admin@maisonluxe.ae";
+  const adminEmail = "admin@maisonluxe.in";
   const adminPassword = "Admin@12345";
   await db.user.upsert({
     where: { email: adminEmail },

@@ -2,15 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { Search, Menu } from "lucide-react";
+import { Search, Menu, ArrowLeft, Sun, Moon } from "lucide-react";
 import { AdminMobileNav } from "./AdminMobileNav";
+import { useAdminTheme } from "./AdminThemeProvider";
 
 interface SearchResults {
   products: { id: string; name: string; slug: string }[];
   orders: { id: string; orderNumber: string }[];
   customers: { id: string; name: string | null; email: string }[];
+  variants: { id: string; sku: string; barcode: string | null; product: { id: string; name: string } }[];
 }
 
 export function AdminTopbar({ name, role }: { name: string; role: string }) {
@@ -19,7 +21,10 @@ export function AdminTopbar({ name, role }: { name: string; role: string }) {
   const [results, setResults] = useState<SearchResults | null>(null);
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const boxRef = useRef<HTMLDivElement>(null);
+  const isRoot = pathname === "/admin";
+  const { theme, toggle } = useAdminTheme();
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -47,7 +52,17 @@ export function AdminTopbar({ name, role }: { name: string; role: string }) {
         <Menu size={20} />
       </button>
 
-      <div ref={boxRef} className="relative w-full max-w-sm">
+      {!isRoot && (
+        <button
+          onClick={() => router.back()}
+          aria-label="Go back"
+          className="shrink-0 text-ink-soft hover:text-ink"
+        >
+          <ArrowLeft size={18} />
+        </button>
+      )}
+
+      <div ref={boxRef} className="relative min-w-0 w-full max-w-sm">
         <div className="flex items-center gap-2 border border-line px-3 py-2">
           <Search size={15} className="text-ink-soft" />
           <input
@@ -57,16 +72,17 @@ export function AdminTopbar({ name, role }: { name: string; role: string }) {
               setOpen(true);
             }}
             onFocus={() => setOpen(true)}
-            placeholder="Search products, orders, customers..."
+            placeholder="Search products, orders, customers, barcodes..."
             className="w-full bg-transparent text-sm outline-none"
           />
         </div>
 
         {open && results && (
           <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-96 overflow-y-auto border border-line bg-paper shadow-lg">
-            {results.products.length === 0 && results.orders.length === 0 && results.customers.length === 0 && (
-              <p className="p-4 text-sm text-ink-soft">No results.</p>
-            )}
+            {results.products.length === 0 &&
+              results.orders.length === 0 &&
+              results.customers.length === 0 &&
+              results.variants.length === 0 && <p className="p-4 text-sm text-ink-soft">No results.</p>}
             {results.products.length > 0 && (
               <div className="p-2">
                 <p className="px-2 py-1 text-[10px] uppercase tracking-wide text-ink-soft">Products</p>
@@ -112,11 +128,34 @@ export function AdminTopbar({ name, role }: { name: string; role: string }) {
                 ))}
               </div>
             )}
+            {results.variants.length > 0 && (
+              <div className="border-t border-line p-2">
+                <p className="px-2 py-1 text-[10px] uppercase tracking-wide text-ink-soft">Barcodes</p>
+                {results.variants.map((v) => (
+                  <Link
+                    key={v.id}
+                    href={`/admin/products/${v.product.id}/edit`}
+                    onClick={() => setOpen(false)}
+                    className="block rounded-sm px-2 py-1.5 text-sm hover:bg-paper-dim"
+                  >
+                    {v.product.name} <span className="text-xs text-ink-soft">({v.barcode ?? v.sku})</span>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
 
       <div className="flex shrink-0 items-center gap-4">
+        <button
+          onClick={toggle}
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-ink-soft transition-colors hover:border-ink hover:text-ink"
+        >
+          {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+        </button>
         <div className="hidden text-right sm:block">
           <p className="text-sm font-medium">{name}</p>
           <p className="text-[10px] uppercase tracking-wide text-ink-soft">{role.replace(/_/g, " ")}</p>

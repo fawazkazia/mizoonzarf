@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { InstagramIcon, FacebookIcon, XIcon } from "@/components/ui/SocialIcons";
 import { Container } from "@/components/ui/Container";
+import { auth } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { getMenuCategories } from "@/lib/data/categories";
 import { buildNavItems } from "@/lib/nav";
 import { NewsletterForm } from "@/components/home/Newsletter";
 
 export async function Footer() {
-  const [settings, categories] = await Promise.all([getSettings(), getMenuCategories()]);
+  const [settings, categories, session] = await Promise.all([getSettings(), getMenuCategories(), auth()]);
   const shopLinks = buildNavItems(categories).map((item) => ({ label: item.name, href: item.href }));
 
   const columns = [
@@ -16,9 +17,10 @@ export async function Footer() {
       title: "Help",
       links: [
         { label: "Contact Us", href: "/contact" },
-        { label: "Track Order", href: "/account/orders" },
-        { label: "Shipping Info", href: "/shipping" },
-        { label: "Returns", href: "/returns" },
+        { label: "Track Order", href: session?.user ? "/account/orders" : "/track-order" },
+        { label: "Shipping Policy", href: "/shipping" },
+        { label: "Return & Refund Policy", href: "/returns" },
+        { label: "Cancellation Policy", href: "/cancellation" },
       ],
     },
     {
@@ -27,7 +29,7 @@ export async function Footer() {
         { label: "About Us", href: "/about" },
         { label: "Careers", href: "/careers" },
         { label: "Privacy Policy", href: "/privacy" },
-        { label: "Terms of Service", href: "/terms" },
+        { label: "Terms & Conditions", href: "/terms" },
       ],
     },
   ];

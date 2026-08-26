@@ -29,6 +29,7 @@ export interface NavItem {
   isVirtual?: boolean;
   quickLinks: MegaLink[];
   columns: MegaColumn[];
+  brands: MegaLink[];
   feature?: MegaFeature;
 }
 
@@ -42,6 +43,7 @@ export interface CategoryBannerHit {
 }
 
 type CategoryBannerLookup = (slug: string) => CategoryBannerHit | null;
+type CategoryBrandsLookup = (slug: string) => { name: string; slug: string }[];
 
 /**
  * Single source of truth for header nav, the mobile drawer, and the footer's
@@ -54,12 +56,18 @@ type CategoryBannerLookup = (slug: string) => CategoryBannerHit | null;
  * discount params the /sale route already supports, with an optional
  * feature banner sourced the same way a category's would be.
  */
+function toBrandLinks(brands: { name: string; slug: string }[], categorySlug: string): MegaLink[] {
+  return brands.map((b) => ({ label: b.name, href: `/${categorySlug}?brand=${encodeURIComponent(b.name)}` }));
+}
+
 export function buildNavItems(
   categories: CategoryWithChildren[],
   getCategoryBanner?: CategoryBannerLookup,
-  saleFeature?: CategoryBannerHit | null
+  saleFeature?: CategoryBannerHit | null,
+  getCategoryBrands?: CategoryBrandsLookup,
+  fallbackBrands: { name: string; slug: string }[] = []
 ): NavItem[] {
-  const items = categories.map((category) => buildNavItem(category, getCategoryBanner));
+  const items = categories.map((category) => buildNavItem(category, getCategoryBanner, getCategoryBrands));
 
   items.push({
     name: "Sale",
@@ -83,6 +91,7 @@ export function buildNavItems(
         ],
       },
     ],
+    brands: toBrandLinks(fallbackBrands, "sale"),
     feature: saleFeature
       ? {
           imageUrl: saleFeature.imageUrl,
@@ -97,7 +106,11 @@ export function buildNavItems(
   return items;
 }
 
-function buildNavItem(category: CategoryWithChildren, getCategoryBanner?: CategoryBannerLookup): NavItem {
+function buildNavItem(
+  category: CategoryWithChildren,
+  getCategoryBanner?: CategoryBannerLookup,
+  getCategoryBrands?: CategoryBrandsLookup
+): NavItem {
   const slug = category.slug;
   const config = MEGA_MENU_CONFIG[slug];
   const children = category.children;
@@ -123,8 +136,9 @@ function buildNavItem(category: CategoryWithChildren, getCategoryBanner?: Catego
   });
 
   const feature = buildFeature(category, config, childBySlug, getCategoryBanner);
+  const brands = toBrandLinks(getCategoryBrands?.(slug) ?? [], slug);
 
-  return { name: category.name, slug, href: `/${slug}`, tone: "default", quickLinks, columns, feature };
+  return { name: category.name, slug, href: `/${slug}`, tone: "default", quickLinks, columns, brands, feature };
 }
 
 function buildColumns(
