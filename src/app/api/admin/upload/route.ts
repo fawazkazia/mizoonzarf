@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getStorageProvider } from "@/lib/storage/local";
+import { getStorageProvider } from "@/lib/storage";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
