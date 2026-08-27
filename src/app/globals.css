@@ -103,6 +103,7 @@
   --animate-shimmer: shimmer 1.6s linear infinite;
   --animate-hero-progress: hero-progress 3s linear forwards;
   --animate-hero-zoom: hero-zoom 3.3s var(--ease-out-soft) forwards;
+  --animate-scan-line: scan-line 2s ease-in-out infinite;
 
   @keyframes fade-up {
     from {
@@ -183,6 +184,15 @@
     }
     to {
       transform: scale(1.08);
+    }
+  }
+  @keyframes scan-line {
+    0%,
+    100% {
+      top: 8%;
+    }
+    50% {
+      top: 92%;
     }
   }
 }
