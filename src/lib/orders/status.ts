@@ -4,9 +4,28 @@ import { notify, ORDER_EVENT_TEMPLATES } from "@/lib/notifications/registry";
 import { createNotification } from "@/lib/notifications/inapp";
 import { estimatePointsEarned, reverseLoyaltyPoints } from "@/lib/loyalty";
 import { recomputeUserReliability } from "@/lib/risk/recomputeReliability";
-import type { OrderStatus } from "@/generated/prisma/client";
+import type { OrderStatus, PaymentMethod, PaymentStatus } from "@/generated/prisma/client";
 
 const POINTS_REVERSING_STATUSES: OrderStatus[] = ["CANCELLED", "REFUNDED", "RETURNED"];
+
+/**
+ * Prepaid orders sit at ORDER_PLACED/PENDING until the gateway webhook confirms
+ * or fails the payment — that's indistinguishable from a freshly placed COD
+ * order in the raw status, so admin lists show a dedicated label for it instead.
+ */
+export function getOrderStatusDisplay(
+  status: OrderStatus,
+  paymentStatus: PaymentStatus,
+  paymentMethod: PaymentMethod
+): { label: string; tone: "ink" | "sale" | "success" | "outline" | "warning" } {
+  if (status === "ORDER_PLACED" && paymentStatus === "PENDING" && paymentMethod !== "COD") {
+    return { label: "Pending Payment", tone: "warning" };
+  }
+  if (status === "DELIVERED") return { label: "Delivered", tone: "success" };
+  if (status === "PAYMENT_CONFIRMED") return { label: "Payment Confirmed", tone: "success" };
+  if (status === "CANCELLED") return { label: "Cancelled", tone: "sale" };
+  return { label: status.replace(/_/g, " "), tone: "ink" };
+}
 
 /**
  * Core order-status transition: history row, loyalty earn/reverse, customer

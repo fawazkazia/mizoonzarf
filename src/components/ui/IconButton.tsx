@@ -14,6 +14,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       ref={ref}
       type="button"
       aria-label={label}
+      title={label}
       className={cn(
         "relative inline-flex h-11 w-11 items-center justify-center text-ink transition-colors duration-[var(--dur-1)] hover:text-ink-mute disabled:opacity-30",
         className

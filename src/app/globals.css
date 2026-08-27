@@ -203,12 +203,23 @@ body {
   font-family: var(--font-sans);
 }
 
+/* One typography system sitewide: every heading tag (and the .font-display
+   utility some components apply directly) renders in the same sans font as
+   body text, at a bold weight — this is the single point of control, so no
+   page or component needs its own font override to stay consistent. An
+   element-level font-weight utility (font-medium, font-semibold, …) still
+   wins over this default since class selectors outrank element selectors. */
 h1,
 h2,
-h3,
-h4,
 .font-display {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
+  font-weight: 700;
+}
+
+h3,
+h4 {
+  font-family: var(--font-sans);
+  font-weight: 600;
 }
 
 ::selection {

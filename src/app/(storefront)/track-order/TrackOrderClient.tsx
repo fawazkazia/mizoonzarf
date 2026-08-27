@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Clock3, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { formatINR } from "@/lib/currency";
 import { OrderTimeline, type OrderTimelineStatusEntry, type OrderTimelineShipment } from "@/components/account/OrderTimeline";
+import { CompletePaymentButton } from "@/components/orders/CompletePaymentButton";
 
 interface ShippingAddress {
   fullName: string;
@@ -16,8 +18,10 @@ interface ShippingAddress {
 }
 
 interface TrackedOrder {
+  id: string;
   orderNumber: string;
   status: string;
+  paymentStatus: string;
   createdAt: string;
   subtotal: number;
   discountAmount: number;
@@ -33,7 +37,7 @@ interface TrackedOrder {
   shipment: OrderTimelineShipment | null;
 }
 
-export function TrackOrderClient() {
+export function TrackOrderClient({ gradient, accent }: { gradient: string; accent: string }) {
   const searchParams = useSearchParams();
   const [orderNumber, setOrderNumber] = useState(searchParams.get("order") ?? "");
   const [email, setEmail] = useState("");
@@ -102,12 +106,33 @@ export function TrackOrderClient() {
             </p>
           </div>
 
+          {result.paymentStatus === "FAILED" ? (
+            <div className="flex items-center gap-3 border border-sale/30 bg-sale/10 p-4 text-sm font-medium text-sale">
+              <XCircle size={18} className="shrink-0" strokeWidth={1.75} />
+              Payment failed — this order was cancelled.
+            </div>
+          ) : (
+            result.paymentStatus === "PENDING" &&
+            result.paymentMethod !== "COD" && (
+              <div className="flex flex-col gap-3 border border-gold-soft bg-gold-soft/25 p-4 text-sm font-medium sm:flex-row sm:items-center sm:justify-between">
+                <span className="flex items-center gap-3 text-gold-deep">
+                  <Clock3 size={18} className="shrink-0" strokeWidth={1.75} />
+                  Your order is placed — complete payment to confirm it.
+                </span>
+                <CompletePaymentButton orderId={result.id} orderNumber={result.orderNumber} gradient={gradient} />
+              </div>
+            )
+          )}
+
           <OrderTimeline
             status={result.status}
+            paymentStatus={result.paymentStatus}
             statusHistory={result.statusHistory}
             placedAt={result.createdAt}
             shipment={result.shipment}
             paymentMethod={result.paymentMethod}
+            gradient={gradient}
+            accent={accent}
           />
 
           <div className="grid gap-6 lg:grid-cols-2">

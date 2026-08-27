@@ -226,7 +226,10 @@ export async function POST(req: NextRequest) {
       amount: totals.total,
       currency: settings.currency,
       successUrl: `${siteUrl}/checkout/confirmation/${order.orderNumber}?session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${siteUrl}/checkout`,
+      // The order already exists and the cart is already cleared by this point, so send a
+      // cancelled/abandoned payment back to the order itself rather than a bare checkout
+      // page that now has nothing left in it to show.
+      cancelUrl: `${siteUrl}/checkout/confirmation/${order.orderNumber}`,
     });
   } catch (err) {
     console.error("[checkout] provider.charge failed", err);

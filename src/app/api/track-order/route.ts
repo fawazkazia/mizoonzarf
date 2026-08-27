@@ -40,8 +40,10 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({
+    id: order.id,
     orderNumber: order.orderNumber,
     status: order.status,
+    paymentStatus: order.paymentStatus,
     createdAt: order.createdAt,
     subtotal: Number(order.subtotal),
     discountAmount: Number(order.discountAmount),

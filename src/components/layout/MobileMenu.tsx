@@ -30,7 +30,7 @@ export function MobileMenu({ menu, isSignedIn }: { menu: NavItem[]; isSignedIn: 
   return (
     <Sheet open={open} onClose={close} side="left" ariaLabel="Site navigation" panelClassName="w-[86vw] max-w-sm">
       <div className="flex items-center justify-between border-b border-line px-6 py-5">
-        <span className="font-display text-xl">{settings.brandName}</span>
+        <span className="font-[family-name:var(--font-display)] text-xl font-normal">{settings.brandName}</span>
         <button onClick={close} aria-label="Close menu" className="flex h-11 w-11 items-center justify-center">
           <X size={20} />
         </button>

@@ -17,7 +17,7 @@ export function StatCard({
   const content = (
     <>
       <p className="text-xs uppercase tracking-[0.1em] text-ink-soft">{label}</p>
-      <p className={cn("mt-2 font-display text-3xl", tone === "warning" && "text-sale")}>{value}</p>
+      <p className={cn("mt-2 whitespace-nowrap font-display text-2xl", tone === "warning" && "text-sale")}>{value}</p>
       {hint && <p className="mt-1 text-xs text-ink-soft">{hint}</p>}
     </>
   );

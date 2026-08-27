@@ -1,13 +1,15 @@
 import { notFound } from "next/navigation";
 import Stripe from "stripe";
-import { CheckCircle2, Clock } from "lucide-react";
+import { CheckCircle2, Clock3, XCircle } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getSettings } from "@/lib/settings";
 import { formatINR } from "@/lib/currency";
 import { markOrderPaid } from "@/lib/orders/payment-events";
 import { Container } from "@/components/ui/Container";
 import { ButtonLink } from "@/components/ui/Button";
 import { OrderTimeline } from "@/components/account/OrderTimeline";
+import { CompletePaymentButton } from "@/components/orders/CompletePaymentButton";
 
 interface PageProps {
   params: Promise<{ orderNumber: string }>;
@@ -17,7 +19,10 @@ interface PageProps {
 export default async function ConfirmationPage({ params, searchParams }: PageProps) {
   const { orderNumber } = await params;
   const { session_id: sessionId } = await searchParams;
-  const session = await auth();
+  const [session, settings] = await Promise.all([auth(), getSettings()]);
+  const brand = settings.promoStrips.brandsBanner;
+  const gradient = `linear-gradient(90deg, ${brand.gradientFrom}, ${brand.gradientVia}, ${brand.gradientTo})`;
+  const accent = brand.gradientVia;
   const orderInclude = {
     items: true,
     statusHistory: { orderBy: { createdAt: "asc" as const } },
@@ -45,28 +50,53 @@ export default async function ConfirmationPage({ params, searchParams }: PagePro
     }
   }
 
+  // COD is never "paid" ahead of delivery by design, so a PENDING COD order is the
+  // normal happy path — only a prepaid method sitting at PENDING actually needs action.
+  const paymentPending = order.paymentStatus === "PENDING" && order.paymentMethod !== "COD";
+  const paymentFailed = order.paymentStatus === "FAILED";
+
   return (
     <Container className="py-20 text-center">
       <div className="mx-auto max-w-3xl">
-        <CheckCircle2 size={48} className="mx-auto text-success" strokeWidth={1.2} />
-        <h1 className="mt-6 font-display text-4xl">Thank You!</h1>
-        <p className="mt-3 text-ink-soft">
-          Your order <strong>{order.orderNumber}</strong> has been placed. We&apos;ve sent a confirmation to your email.
-        </p>
-
-        {order.paymentMethod !== "COD" && order.paymentStatus === "PENDING" && (
-          <p className="mt-3 flex items-center justify-center gap-1.5 text-sm text-ink-soft">
-            <Clock size={14} /> Payment is still processing — we&apos;ll email you once it&apos;s confirmed.
-          </p>
+        {paymentFailed ? (
+          <>
+            <XCircle size={48} className="mx-auto text-sale" strokeWidth={1.2} />
+            <h1 className="mt-6 font-display text-4xl">Payment Failed</h1>
+            <p className="mt-3 text-ink-soft">
+              Your payment for order <strong>{order.orderNumber}</strong> didn&apos;t go through, so it&apos;s been cancelled.
+            </p>
+          </>
+        ) : paymentPending ? (
+          <>
+            <Clock3 size={48} className="mx-auto text-gold-deep" strokeWidth={1.2} />
+            <h1 className="mt-6 font-display text-4xl">Complete Your Payment</h1>
+            <p className="mt-3 text-ink-soft">
+              Order <strong>{order.orderNumber}</strong> has been placed — complete your payment to confirm it.
+            </p>
+            <div className="mt-5 flex justify-center">
+              <CompletePaymentButton orderId={order.id} orderNumber={order.orderNumber} gradient={gradient} />
+            </div>
+          </>
+        ) : (
+          <>
+            <CheckCircle2 size={48} className="mx-auto text-success" strokeWidth={1.2} />
+            <h1 className="mt-6 font-display text-4xl">Thank You!</h1>
+            <p className="mt-3 text-ink-soft">
+              Your order <strong>{order.orderNumber}</strong> has been placed. We&apos;ve sent a confirmation to your email.
+            </p>
+          </>
         )}
       </div>
 
       <div className="mx-auto mt-10 max-w-5xl text-left">
         <OrderTimeline
           status={order.status}
+          paymentStatus={order.paymentStatus}
           statusHistory={order.statusHistory}
           placedAt={order.createdAt}
           paymentMethod={order.paymentMethod}
+          gradient={gradient}
+          accent={accent}
           shipment={
             order.shipment && {
               provider: order.shipment.provider,

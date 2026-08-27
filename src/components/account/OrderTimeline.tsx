@@ -1,6 +1,5 @@
-import { ShoppingBag, CreditCard, Settings2, Package, Truck, Bike, PackageCheck, Check, XCircle, RotateCcw, type LucideIcon } from "lucide-react";
+import { ShoppingBag, CreditCard, Settings2, Package, Truck, Bike, PackageCheck, XCircle, RotateCcw, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import { ShipmentTimeline, type ShipmentTimelineEvent } from "@/components/admin/ShipmentTimeline";
 
@@ -58,27 +57,47 @@ function formatDate(value: string | Date): string {
   return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 }
 
-/** Modern icon-based tracking timeline for the happy path, plus a terminal-state
+/** Icon-based tracking timeline for the happy path, plus a terminal-state
  * message for cancelled/returned/refunded orders. Every caption is sourced from
  * real OrderStatusHistory rows / shipment data — a step with nothing real to
- * show just shows its title, never a fabricated date or note. */
+ * show just shows its title, never a fabricated date or note. The row scrolls
+ * horizontally on narrow screens instead of switching to a separate vertical layout. */
 export function OrderTimeline({
   status,
+  paymentStatus,
   statusHistory = [],
   placedAt,
   shipment,
   paymentMethod,
+  gradient,
+  accent,
 }: {
   status: string;
+  /** When this and status === "CANCELLED" line up, the cancellation was a failed
+   * payment, not a manual/admin cancellation — shown with its own wording. */
+  paymentStatus?: string;
   statusHistory?: OrderTimelineStatusEntry[];
   placedAt?: string | Date;
   shipment?: OrderTimelineShipment | null;
   paymentMethod?: string;
+  gradient: string;
+  accent: string;
 }) {
+  if (status === "CANCELLED" && paymentStatus === "FAILED") {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-sale/30 bg-sale/10 p-4 text-sm">
+        <XCircle size={20} className="shrink-0 text-sale" strokeWidth={1.5} />
+        <span>
+          <strong>Payment Failed.</strong> This order was cancelled because payment didn&apos;t go through.
+        </span>
+      </div>
+    );
+  }
+
   if (status in TERMINAL_LABELS) {
     const Icon = status === "CANCELLED" ? XCircle : RotateCcw;
     return (
-      <div className="flex items-center gap-3 border border-line bg-paper-dim p-4 text-sm">
+      <div className="flex items-center gap-3 rounded-xl border border-line bg-paper-dim p-4 text-sm">
         <Icon size={20} className="shrink-0 text-ink-soft" strokeWidth={1.5} />
         <span>
           This order is <strong>{TERMINAL_LABELS[status]}</strong>.
@@ -127,69 +146,56 @@ export function OrderTimeline({
   const trackUrl = shipment?.provider === "SHIPROCKET" && shipment.awbCode ? `https://shiprocket.co/tracking/${shipment.awbCode}` : null;
 
   return (
-    <div className="@container flex flex-col gap-6">
-      <ol className="hidden @4xl:flex">
-        {happyPath.map((step, i) => {
-          const done = i <= currentIndex;
-          const current = i === activeIndex;
-          const meta = STEP_META[step];
-          const caption = captionFor(step, done);
-          return (
-            <li key={step} className="flex min-w-0 flex-1 flex-col items-center gap-2.5 px-1 text-center">
-              <div className="flex w-full items-center">
-                <div className={cn("h-0.5 flex-1 transition-colors duration-500", i === 0 ? "opacity-0" : done ? "bg-ink" : "bg-line")} />
-                <StepIcon icon={meta.icon} state={current ? "current" : done ? "done" : "upcoming"} />
-                <div
-                  className={cn(
-                    "h-0.5 flex-1 transition-colors duration-500",
-                    i === happyPath.length - 1 ? "opacity-0" : done && i < currentIndex ? "bg-ink" : "bg-line"
-                  )}
-                />
-              </div>
-              <div className="flex flex-col items-center gap-1">
-                <span className={cn("text-[11px] font-medium uppercase tracking-[0.06em]", current || done ? "text-ink" : "text-ink-soft/60")}>
-                  {meta.label}
-                </span>
-                {current && <Badge tone="gold" className="normal-case">Current Status</Badge>}
-                {caption && <span className="line-clamp-2 text-[10.5px] leading-snug text-ink-soft">{caption}</span>}
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-
-      <ol className="flex flex-col @4xl:hidden">
-        {happyPath.map((step, i) => {
-          const done = i <= currentIndex;
-          const current = i === activeIndex;
-          const meta = STEP_META[step];
-          const caption = captionFor(step, done);
-          const isLast = i === happyPath.length - 1;
-          return (
-            <li key={step} className="relative flex gap-3 pb-6 last:pb-0">
-              {!isLast && (
-                <span
-                  className={cn(
-                    "absolute left-[19px] top-10 bottom-0 w-0.5 transition-colors duration-500",
-                    i < currentIndex ? "bg-ink" : "bg-line"
-                  )}
-                />
-              )}
-              <StepIcon icon={meta.icon} state={current ? "current" : done ? "done" : "upcoming"} />
-              <div className="flex-1 pt-1.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={cn("text-sm font-medium", current || done ? "text-ink" : "text-ink-soft/70")}>{meta.label}</span>
-                  {current && <Badge tone="gold" className="normal-case">Current Status</Badge>}
+    <div className="flex flex-col gap-6">
+      <div className="-mx-1 overflow-x-auto px-1 pb-1">
+        <ol className="flex">
+          {happyPath.map((step, i) => {
+            const done = i <= currentIndex;
+            const current = i === activeIndex;
+            const lineFilled = i <= currentIndex;
+            const meta = STEP_META[step];
+            const caption = captionFor(step, done);
+            return (
+              <li key={step} className="flex min-w-[112px] flex-1 shrink-0 flex-col items-center gap-2.5 px-1 text-center">
+                <div className="flex w-full items-center">
+                  <span
+                    className={cn("h-0.5 flex-1 transition-colors duration-500", i === 0 ? "opacity-0" : !lineFilled && "bg-line")}
+                    style={i > 0 && lineFilled ? { backgroundColor: accent } : undefined}
+                  />
+                  <StepIcon icon={meta.icon} state={current ? "current" : done ? "done" : "upcoming"} gradient={gradient} accent={accent} />
+                  <span
+                    className={cn(
+                      "h-0.5 flex-1 transition-colors duration-500",
+                      i === happyPath.length - 1 ? "opacity-0" : !(done && i < currentIndex) && "bg-line"
+                    )}
+                    style={i < happyPath.length - 1 && done && i < currentIndex ? { backgroundColor: accent } : undefined}
+                  />
                 </div>
-                <p className="mt-0.5 text-xs text-ink-soft">{caption ?? meta.meaning}</p>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
+                <div className="flex flex-col items-center gap-1">
+                  <span
+                    className={cn("text-[11px] font-medium uppercase tracking-[0.06em]", current ? "font-semibold" : done ? "text-ink" : "text-ink-mute")}
+                    style={current ? { color: accent } : undefined}
+                  >
+                    {meta.label}
+                  </span>
+                  {current && (
+                    <span
+                      className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.08em] text-paper"
+                      style={{ backgroundImage: gradient }}
+                    >
+                      Current Status
+                    </span>
+                  )}
+                  {caption && <span className="line-clamp-2 text-[10.5px] leading-snug text-ink-soft">{caption}</span>}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
 
       {(shipment?.trackingNumber || shipment?.deliveryException) && (
-        <div className="border border-line p-4">
+        <div className="rounded-xl border border-line p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.1em] text-ink-soft">{shipment.courierName || shipment.carrier || "Courier"}</p>
@@ -208,7 +214,7 @@ export function OrderTimeline({
             )}
           </div>
 
-          {shipment.deliveryException && <p className="mt-3 border border-line bg-paper-dim p-3 text-xs text-ink-soft">{shipment.deliveryException}</p>}
+          {shipment.deliveryException && <p className="mt-3 rounded-lg border border-line bg-paper-dim p-3 text-xs text-ink-soft">{shipment.deliveryException}</p>}
 
           {shipment.events && shipment.events.length > 0 && (
             <div className="mt-4 border-t border-line pt-4">
@@ -221,22 +227,33 @@ export function OrderTimeline({
   );
 }
 
-function StepIcon({ icon: Icon, state }: { icon: LucideIcon; state: "done" | "current" | "upcoming" }) {
+function StepIcon({
+  icon: Icon,
+  state,
+  gradient,
+  accent,
+}: {
+  icon: LucideIcon;
+  state: "done" | "current" | "upcoming";
+  gradient: string;
+  accent: string;
+}) {
   return (
     <div
       className={cn(
-        "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-all duration-500",
-        state === "done" && "border-ink bg-ink text-paper",
-        state === "current" && "scale-110 border-gold bg-paper text-gold-deep ring-4 ring-gold/15",
-        state === "upcoming" && "border-line bg-paper-dim text-ink-mute"
+        "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-paper transition-all duration-500",
+        state === "upcoming" && "border-line bg-paper-dim text-ink-mute",
+        state === "current" && "scale-110 border-transparent shadow-[var(--shadow-lift)]"
       )}
+      style={
+        state === "current"
+          ? { backgroundImage: gradient }
+          : state === "done"
+            ? { backgroundColor: accent, borderColor: "transparent" }
+            : undefined
+      }
     >
-      <Icon size={state === "current" ? 17 : 15} strokeWidth={1.75} />
-      {state === "done" && (
-        <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-success text-paper ring-2 ring-paper">
-          <Check size={9} strokeWidth={3} />
-        </span>
-      )}
+      <Icon size={state === "current" ? 18 : 16} strokeWidth={1.75} />
     </div>
   );
 }

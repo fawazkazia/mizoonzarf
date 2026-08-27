@@ -11,7 +11,7 @@ export async function getDashboardStats() {
       db.user.count({ where: { role: "CUSTOMER" } }),
       db.product.count({ where: { status: "ACTIVE" } }),
       db.$queryRaw<{ count: bigint }[]>`SELECT COUNT(*)::bigint as count FROM "product_variants" WHERE stock <= "lowStockThreshold"`,
-      db.order.findMany({ orderBy: { createdAt: "desc" }, take: 8, select: { id: true, orderNumber: true, total: true, status: true, createdAt: true, guestEmail: true, user: { select: { name: true, email: true } } } }),
+      db.order.findMany({ orderBy: { createdAt: "desc" }, take: 8, select: { id: true, orderNumber: true, total: true, status: true, paymentStatus: true, paymentMethod: true, createdAt: true, guestEmail: true, user: { select: { name: true, email: true } } } }),
       db.order.groupBy({ by: ["status"], _count: true }),
       db.$queryRaw<
         { id: string; sku: string; stock: number; lowStockThreshold: number; size: string | null; color: string | null; productName: string; productSlug: string }[]
@@ -61,6 +61,8 @@ export async function getDashboardStats() {
       orderNumber: o.orderNumber,
       total: Number(o.total),
       status: o.status,
+      paymentStatus: o.paymentStatus,
+      paymentMethod: o.paymentMethod,
       createdAt: o.createdAt,
       customer: o.user?.name ?? o.user?.email ?? o.guestEmail ?? "Guest",
     })),

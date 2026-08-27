@@ -29,6 +29,7 @@ function LinkIcon({
     <Link
       href={href}
       aria-label={label}
+      title={label}
       className={cn(
         "relative inline-flex h-11 w-11 items-center justify-center text-ink transition-colors duration-[var(--dur-1)] hover:text-ink-mute",
         className
@@ -58,6 +59,7 @@ function AccountMenu() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="Account menu"
+        title="Account"
         aria-haspopup="menu"
         aria-expanded={open}
         className="relative inline-flex h-11 items-center gap-0.5 px-1 text-ink transition-colors duration-[var(--dur-1)] hover:text-ink-mute"

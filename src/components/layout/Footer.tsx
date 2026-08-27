@@ -38,7 +38,7 @@ export async function Footer() {
     <footer className="border-t border-line bg-ink text-paper">
       <Container className="grid gap-12 py-16 lg:grid-cols-[1.4fr_repeat(3,1fr)_1.2fr]">
         <div>
-          <p className="font-display text-2xl">{settings.brandName}</p>
+          <p className="font-[family-name:var(--font-display)] text-2xl font-normal">{settings.brandName}</p>
           <p className="mt-4 max-w-xs text-sm text-paper/60">{settings.footer.about}</p>
           <div className="mt-6 flex gap-4">
             <a href={settings.socialLinks.instagram} aria-label="Instagram" className="text-paper/70 hover:text-paper">

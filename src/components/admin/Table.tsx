@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
 
-export function Table({ children }: { children: React.ReactNode }) {
+export function Table({ children, compact = false }: { children: React.ReactNode; compact?: boolean }) {
   return (
     <div className="overflow-x-auto border border-line bg-paper">
-      <table className="w-full min-w-[720px] text-left text-sm">{children}</table>
+      <table className={cn("w-full text-left text-sm", !compact && "min-w-[720px]")}>{children}</table>
     </div>
   );
 }

@@ -66,7 +66,7 @@ export function HeaderClient({ menu, isSignedIn }: { menu: NavItem[]; isSignedIn
                   className="h-10 w-auto object-contain sm:h-11 lg:h-12"
                 />
               )}
-              <span className="font-display text-xl uppercase leading-none tracking-[0.24em] sm:text-2xl">
+              <span className="font-[family-name:var(--font-display)] text-xl font-normal uppercase leading-none tracking-[0.24em] sm:text-2xl">
                 {settings.brandName}
               </span>
             </span>

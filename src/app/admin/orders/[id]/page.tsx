@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { getSettings } from "@/lib/settings";
 import { formatINR } from "@/lib/currency";
 import { OrderStatusUpdater } from "./OrderStatusUpdater";
 import { OrderSecurityPanel } from "./OrderSecurityPanel";
@@ -17,7 +18,7 @@ interface PageProps {
 
 export default async function AdminOrderDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const [order, shippingSettings] = await Promise.all([
+  const [order, shippingSettings, settings] = await Promise.all([
     db.order.findUnique({
       where: { id },
       include: {
@@ -28,10 +29,14 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
       },
     }),
     getShippingProviderSettings(),
+    getSettings(),
   ]);
 
   if (!order) notFound();
   const isShiprocketActive = shippingSettings.activeProvider === "SHIPROCKET";
+  const brand = settings.promoStrips.brandsBanner;
+  const gradient = `linear-gradient(90deg, ${brand.gradientFrom}, ${brand.gradientVia}, ${brand.gradientTo})`;
+  const accent = brand.gradientVia;
 
   const address = order.shippingAddress as { fullName: string; phone: string; line1: string; line2?: string; city: string; country: string };
 
@@ -52,7 +57,7 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      <OrderTimeline status={order.status} />
+      <OrderTimeline status={order.status} paymentStatus={order.paymentStatus} gradient={gradient} accent={accent} />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="flex flex-col gap-6">

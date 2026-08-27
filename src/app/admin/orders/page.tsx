@@ -7,6 +7,7 @@ import { SearchInput } from "@/components/admin/SearchInput";
 import { StatusFilterSelect } from "@/components/admin/StatusFilterSelect";
 import { Pagination } from "@/components/admin/Pagination";
 import { Badge } from "@/components/ui/Badge";
+import { getOrderStatusDisplay } from "@/lib/orders/status";
 
 export const metadata = { title: "Orders" };
 
@@ -82,30 +83,31 @@ export default async function OrdersPage({ searchParams }: PageProps) {
         </thead>
         <tbody>
           {orders.length === 0 && <EmptyRow colSpan={8}>No orders found.</EmptyRow>}
-          {orders.map((o) => (
-            <tr key={o.id}>
-              <Td>
-                <Link href={`/admin/orders/${o.id}`} className="font-medium hover:underline">
-                  {o.orderNumber}
-                </Link>
-              </Td>
-              <Td>{o.user?.name ?? o.user?.email ?? o.guestEmail ?? "Guest"}</Td>
-              <Td>{o.items.length}</Td>
-              <Td>
-                <Badge tone={o.status === "DELIVERED" ? "success" : o.status === "CANCELLED" ? "sale" : "ink"}>
-                  {o.status.replace(/_/g, " ")}
-                </Badge>
-              </Td>
-              <Td>
-                <Badge tone={o.paymentStatus === "PAID" ? "success" : "outline"}>{o.paymentStatus}</Badge>
-              </Td>
-              <Td>
-                <Badge tone={o.riskLevel === "HIGH" ? "sale" : o.riskLevel === "LOW" ? "success" : "outline"}>{o.riskLevel}</Badge>
-              </Td>
-              <Td className="text-right">{formatINR(Number(o.total))}</Td>
-              <Td>{o.createdAt.toLocaleDateString()}</Td>
-            </tr>
-          ))}
+          {orders.map((o) => {
+            const statusDisplay = getOrderStatusDisplay(o.status, o.paymentStatus, o.paymentMethod);
+            return (
+              <tr key={o.id}>
+                <Td>
+                  <Link href={`/admin/orders/${o.id}`} className="font-medium hover:underline">
+                    {o.orderNumber}
+                  </Link>
+                </Td>
+                <Td>{o.user?.name ?? o.user?.email ?? o.guestEmail ?? "Guest"}</Td>
+                <Td>{o.items.length}</Td>
+                <Td>
+                  <Badge tone={statusDisplay.tone}>{statusDisplay.label}</Badge>
+                </Td>
+                <Td>
+                  <Badge tone={o.paymentStatus === "PAID" ? "success" : "outline"}>{o.paymentStatus}</Badge>
+                </Td>
+                <Td>
+                  <Badge tone={o.riskLevel === "HIGH" ? "sale" : o.riskLevel === "LOW" ? "success" : "outline"}>{o.riskLevel}</Badge>
+                </Td>
+                <Td className="text-right">{formatINR(Number(o.total))}</Td>
+                <Td>{o.createdAt.toLocaleDateString()}</Td>
+              </tr>
+            );
+          })}
         </tbody>
       </Table>
 

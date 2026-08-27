@@ -5,6 +5,7 @@ import { StatCard } from "@/components/admin/StatCard";
 import { RevenueTrendChart, OrdersByStatusChart } from "@/components/admin/DashboardCharts";
 import { Table, Th, Td, EmptyRow } from "@/components/admin/Table";
 import { Badge } from "@/components/ui/Badge";
+import { getOrderStatusDisplay } from "@/lib/orders/status";
 
 export const metadata = { title: "Dashboard" };
 
@@ -60,7 +61,7 @@ export default async function AdminDashboardPage() {
               View All
             </Link>
           </div>
-          <Table>
+          <Table compact>
             <thead>
               <tr>
                 <Th>Order</Th>
@@ -71,22 +72,23 @@ export default async function AdminDashboardPage() {
             </thead>
             <tbody>
               {stats.recentOrders.length === 0 && <EmptyRow colSpan={4}>No orders yet.</EmptyRow>}
-              {stats.recentOrders.map((o) => (
-                <tr key={o.id}>
-                  <Td>
-                    <Link href={`/admin/orders/${o.id}`} className="hover:underline">
-                      {o.orderNumber}
-                    </Link>
-                  </Td>
-                  <Td>{o.customer}</Td>
-                  <Td>
-                    <Badge tone={o.status === "DELIVERED" ? "success" : o.status === "CANCELLED" ? "sale" : "ink"}>
-                      {o.status.replace(/_/g, " ")}
-                    </Badge>
-                  </Td>
-                  <Td className="text-right">{formatINR(o.total)}</Td>
-                </tr>
-              ))}
+              {stats.recentOrders.map((o) => {
+                const statusDisplay = getOrderStatusDisplay(o.status, o.paymentStatus, o.paymentMethod);
+                return (
+                  <tr key={o.id}>
+                    <Td>
+                      <Link href={`/admin/orders/${o.id}`} className="hover:underline">
+                        {o.orderNumber}
+                      </Link>
+                    </Td>
+                    <Td>{o.customer}</Td>
+                    <Td>
+                      <Badge tone={statusDisplay.tone}>{statusDisplay.label}</Badge>
+                    </Td>
+                    <Td className="text-right">{formatINR(o.total)}</Td>
+                  </tr>
+                );
+              })}
             </tbody>
           </Table>
         </div>
@@ -98,7 +100,7 @@ export default async function AdminDashboardPage() {
               View Products
             </Link>
           </div>
-          <Table>
+          <Table compact>
             <thead>
               <tr>
                 <Th>Product</Th>
