@@ -40,6 +40,7 @@ export function OtpVerificationPanel({
   const [verifying, setVerifying] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
+  const [devCode, setDevCode] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const autoSentRef = useRef(false);
 
@@ -65,6 +66,7 @@ export function OtpVerificationPanel({
     }
 
     setCooldown(data.cooldownSeconds ?? 45);
+    setDevCode(data.devCode ?? null);
     setStep("enter-code");
     setDigits(Array(OTP_LENGTH).fill(""));
     setTimeout(() => inputRefs.current[0]?.focus(), 50);
@@ -180,6 +182,12 @@ export function OtpVerificationPanel({
           <p className="text-sm text-ink-soft">
             {PURPOSE_COPY[purpose].sentPrefix} <span className="font-medium text-ink">{e164}</span>.
           </p>
+          {devCode && (
+            <p className="border border-dashed border-line bg-paper-dim px-3 py-2 text-xs text-ink-soft">
+              Dev mode (no SMS provider configured): your code is{" "}
+              <span className="font-mono font-medium text-ink">{devCode}</span>.
+            </p>
+          )}
           <div className="flex justify-between gap-2">
             {digits.map((d, i) => (
               <input

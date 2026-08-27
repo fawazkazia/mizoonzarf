@@ -165,7 +165,9 @@ export function CheckoutClient({
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [deliveryMethod, setDeliveryMethod] = useState<"standard" | "express">("standard");
-  const [paymentMethod, setPaymentMethod] = useState(paymentMethods.find((p) => p.configured)?.id ?? "COD");
+  const [paymentMethod, setPaymentMethod] = useState(
+    paymentMethods.find((p) => p.configured && p.id !== "COD")?.id ?? paymentMethods.find((p) => p.configured)?.id ?? "COD"
+  );
   const [notes, setNotes] = useState("");
   const [gstin, setGstin] = useState("");
   const [loading, setLoading] = useState(false);
@@ -708,7 +710,7 @@ export function CheckoutClient({
               </div>
             </div>
 
-            {currentPhone && !phoneVerified && (
+            {currentPhone && !phoneVerified && paymentMethod === "COD" && (
               <div className="mt-4 flex flex-col gap-2 border border-gold-soft bg-paper-dim p-3 text-xs sm:flex-row sm:items-center sm:justify-between">
                 <span>Verify your mobile number to place your order.</span>
                 <Button

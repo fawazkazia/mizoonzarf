@@ -93,18 +93,18 @@ export default async function ProductPage({ params }: PageProps) {
         </p>
       </Container>
 
-      <Container className="grid items-start gap-6 pb-10 lg:grid-cols-[3fr_2fr] lg:gap-10">
+      <Container className="grid items-start gap-6 pb-10 lg:grid-cols-[3fr_2fr] lg:gap-8">
         <div className="lg:sticky lg:top-24 lg:self-start">
           <Gallery images={product.images.map((i) => ({ url: i.url, altText: i.altText }))} productName={product.name} />
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2.5">
           {product.brand && (
             <Link href={`/search?q=${encodeURIComponent(product.brand.name)}`} className="link-reveal w-fit text-xs uppercase tracking-[0.14em] text-ink-soft">
               {product.brand.name}
             </Link>
           )}
-          <h1 className="font-display text-xl sm:text-2xl">{product.name}</h1>
+          <h1 className="font-display text-lg sm:text-xl">{product.name}</h1>
           <div className="flex items-center gap-3">
             {product.reviewCount > 0 && (
               <a href="#reviews" className="link-reveal">
@@ -146,21 +146,21 @@ export default async function ProductPage({ params }: PageProps) {
             />
           )}
 
-          <div className="grid grid-cols-2 gap-2 border-y border-line py-3 text-center text-[11px] uppercase tracking-[0.06em] text-ink-soft sm:grid-cols-4">
-            <div className="flex flex-col items-center gap-1.5">
-              <ShieldCheck size={17} strokeWidth={1.5} />
+          <div className="grid grid-cols-2 gap-2 border-y border-line py-2.5 text-center text-[11px] uppercase tracking-[0.06em] text-ink-soft sm:grid-cols-4">
+            <div className="flex flex-col items-center gap-1">
+              <ShieldCheck size={16} strokeWidth={1.5} />
               Price Assurance
             </div>
-            <div className="flex flex-col items-center gap-1.5">
-              <Truck size={17} strokeWidth={1.5} />
+            <div className="flex flex-col items-center gap-1">
+              <Truck size={16} strokeWidth={1.5} />
               On-Time Delivery
             </div>
-            <div className="flex flex-col items-center gap-1.5">
-              <RefreshCw size={17} strokeWidth={1.5} />
+            <div className="flex flex-col items-center gap-1">
+              <RefreshCw size={16} strokeWidth={1.5} />
               Seamless Exchanges
             </div>
-            <div className="flex flex-col items-center gap-1.5">
-              <Undo2 size={17} strokeWidth={1.5} />
+            <div className="flex flex-col items-center gap-1">
+              <Undo2 size={16} strokeWidth={1.5} />
               Free Returns
             </div>
           </div>
@@ -180,7 +180,7 @@ export default async function ProductPage({ params }: PageProps) {
             </span>
           </div>
 
-          <div className="mt-2">
+          <div className="mt-1">
             <ProductAttributes
               description={product.description}
               material={product.material}

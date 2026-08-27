@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ShieldCheck } from "lucide-react";
+import { Check, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useClickOutside } from "@/hooks/useClickOutside";
 import { PaymentBrandRow, VisaMark, MastercardMark, AmexMark } from "./PaymentBrandIcons";
 
 interface PaymentMethodOption {
@@ -11,6 +9,15 @@ interface PaymentMethodOption {
   label: string;
   configured: boolean;
 }
+
+/** Faint per-network brand tint behind each tile — ties the card back to its
+ * logo colors without competing with them. Falls back to a neutral wash. */
+const TILE_TINT: Record<string, string> = {
+  COD: "#a9803f",
+  RAZORPAY: "#0a5f38",
+  CARD: "#1a1f71",
+  PAYPAL: "#003087",
+};
 
 /** Decorative only — no live card fields. Real card entry happens on the
  * payment partner's hosted/tokenized page after "Place Order", so collecting
@@ -61,71 +68,46 @@ export function PaymentMethodSelector({
   value: string;
   onChange: (id: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
   const selected = methods.find((m) => m.id === value);
 
-  useClickOutside(rootRef, () => setOpen(false), open);
-
-  useEffect(() => {
-    if (!open) return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open]);
-
   return (
-    <div ref={rootRef} className="relative border border-line p-4">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        className="flex w-full items-center justify-between gap-3 text-left"
-      >
-        <span className="shrink-0 whitespace-nowrap text-xs font-medium uppercase tracking-[0.1em]">Payment Method</span>
-        <span className="flex min-w-0 items-center gap-2 text-sm text-ink-soft">
-          <span className="min-w-0 truncate">{selected?.label ?? "Select a payment method"}</span>
-          <ChevronDown size={15} className={cn("shrink-0 transition-transform duration-[var(--dur-1)]", open && "rotate-180")} />
-        </span>
-      </button>
+    <div className="border border-line p-4">
+      <p className="mb-3 text-xs font-medium uppercase tracking-[0.1em]">Payment Method</p>
 
-      {open && (
-        <div className="absolute left-0 right-0 top-full z-[var(--z-panel)] mt-2 max-h-[70vh] overflow-y-auto border border-line bg-paper-raise p-2.5 shadow-[var(--shadow-panel)]">
-          <div role="radiogroup" aria-label="Payment method" className="flex flex-col gap-1.5">
-            {methods.map((pm) => (
-              <label
-                key={pm.id}
-                className={cn(
-                  "flex items-center justify-between gap-3 border px-3 py-2.5 text-sm transition-colors duration-[var(--dur-1)]",
-                  !pm.configured ? "cursor-not-allowed opacity-40" : "cursor-pointer",
-                  pm.configured && value === pm.id ? "border-ink bg-paper-dim" : "border-line",
-                  pm.configured && value !== pm.id && "hover:border-line-strong"
-                )}
-              >
-                <span className="flex min-w-0 items-center gap-3">
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    disabled={!pm.configured}
-                    checked={value === pm.id}
-                    onChange={() => onChange(pm.id)}
-                    className="accent-ink"
-                  />
-                  <PaymentBrandRow id={pm.id} />
-                  <span className="truncate font-medium">{pm.label}</span>
+      <div role="radiogroup" aria-label="Payment method" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {methods.map((pm) => {
+          const tint = TILE_TINT[pm.id];
+          const active = value === pm.id;
+          return (
+            <button
+              key={pm.id}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              disabled={!pm.configured}
+              onClick={() => onChange(pm.id)}
+              style={pm.configured ? { backgroundColor: `${tint}0d` } : undefined}
+              className={cn(
+                "relative flex min-w-0 flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border px-2 py-3.5 text-center text-xs transition-all duration-[var(--dur-1)]",
+                !pm.configured ? "cursor-not-allowed border-line opacity-40" : "cursor-pointer shadow-sm hover:-translate-y-0.5 hover:shadow-md",
+                active ? "border-ink shadow-[var(--shadow-lift)]" : pm.configured && "border-transparent"
+              )}
+            >
+              {active && (
+                <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-ink text-paper">
+                  <Check size={10} strokeWidth={3} />
                 </span>
-                {!pm.configured && <span className="shrink-0 text-[10px] uppercase tracking-wide text-ink-mute">Coming Soon</span>}
-              </label>
-            ))}
-          </div>
+              )}
+              <PaymentBrandRow id={pm.id} className="max-w-full" />
+              <span className="font-medium leading-tight">{pm.label}</span>
+              {!pm.configured && <span className="text-[10px] uppercase tracking-wide text-ink-mute">Coming Soon</span>}
+            </button>
+          );
+        })}
+      </div>
 
-          {selected?.configured && selected.id === "CARD" && <CardPreview />}
-          {selected?.configured && selected.id === "RAZORPAY" && <RazorpayNote />}
-        </div>
-      )}
+      {selected?.configured && selected.id === "CARD" && <CardPreview />}
+      {selected?.configured && selected.id === "RAZORPAY" && <RazorpayNote />}
     </div>
   );
 }

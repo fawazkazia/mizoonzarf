@@ -19,7 +19,10 @@ export default async function CheckoutPage() {
       : Promise.resolve(null),
   ]);
 
-  const paymentMethods = listPaymentMethods().map((p) => ({ id: p.id, label: p.label, configured: p.isConfigured() }));
+  const hiddenPaymentMethods = new Set(["APPLE_PAY", "GOOGLE_PAY", "TABBY", "TAMARA"]);
+  const paymentMethods = listPaymentMethods()
+    .filter((p) => !hiddenPaymentMethods.has(p.id))
+    .map((p) => ({ id: p.id, label: p.label, configured: p.isConfigured() }));
   const offers = await getActiveOffers();
 
   return (

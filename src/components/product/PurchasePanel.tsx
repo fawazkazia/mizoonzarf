@@ -81,12 +81,12 @@ export function PurchasePanel({
   )}`;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2.5">
       <Price price={variant.salePrice ?? variant.price} compareAt={variant.salePrice ? variant.price : null} currency={settings.currency} size="md" />
 
       {sizes.length > 0 && (
         <div>
-          <div className="mb-1.5 flex items-center justify-between">
+          <div className="mb-1 flex items-center justify-between">
             <p className="text-xs uppercase tracking-[0.12em] text-ink-soft">Size</p>
             {sizeGuide && (
               <button onClick={() => setSizeGuideOpen(true)} className="link-reveal text-xs uppercase tracking-[0.1em] text-ink-soft">
@@ -99,7 +99,7 @@ export function PurchasePanel({
               <button
                 key={s}
                 onClick={() => setSize(s)}
-                className={`h-9 min-w-9 border px-2.5 text-sm ${size === s ? "border-ink bg-ink text-paper" : "border-line hover:border-ink"}`}
+                className={`h-8 min-w-8 border px-2 text-sm ${size === s ? "border-ink bg-ink text-paper" : "border-line hover:border-ink"}`}
               >
                 {s}
               </button>
@@ -110,7 +110,7 @@ export function PurchasePanel({
 
       {colors.length > 0 && (
         <div>
-          <p className="mb-1.5 text-xs uppercase tracking-[0.12em] text-ink-soft">Colour {color && `— ${color}`}</p>
+          <p className="mb-1 text-xs uppercase tracking-[0.12em] text-ink-soft">Colour {color && `— ${color}`}</p>
           <div className="flex flex-wrap gap-1.5">
             {colors.map(([name, hex]) => (
               <button
@@ -118,7 +118,7 @@ export function PurchasePanel({
                 onClick={() => setColor(name)}
                 title={name}
                 style={{ backgroundColor: hex ?? undefined }}
-                className={`h-8 w-8 rounded-full border-2 ${color === name ? "border-ink" : "border-transparent"}`}
+                className={`h-7 w-7 rounded-full border-2 ${color === name ? "border-ink" : "border-transparent"}`}
               >
                 {!hex && <span className="sr-only">{name}</span>}
               </button>
@@ -128,14 +128,14 @@ export function PurchasePanel({
       )}
 
       <div>
-        <p className="mb-1.5 text-xs uppercase tracking-[0.12em] text-ink-soft">Quantity</p>
+        <p className="mb-1 text-xs uppercase tracking-[0.12em] text-ink-soft">Quantity</p>
         <div className="flex w-fit items-center border border-line">
-          <button className="px-2.5 py-1.5" onClick={() => setQuantity((q) => Math.max(1, q - 1))} aria-label="Decrease quantity">
+          <button className="px-2 py-1" onClick={() => setQuantity((q) => Math.max(1, q - 1))} aria-label="Decrease quantity">
             <Minus size={13} />
           </button>
-          <span className="w-7 text-center text-sm">{quantity}</span>
+          <span className="w-6 text-center text-sm">{quantity}</span>
           <button
-            className="px-2.5 py-1.5"
+            className="px-2 py-1"
             onClick={() => setQuantity((q) => Math.min(variant.stock, q + 1))}
             disabled={quantity >= variant.stock}
             aria-label="Increase quantity"
@@ -143,17 +143,17 @@ export function PurchasePanel({
             <Plus size={13} />
           </button>
         </div>
-        <p className="mt-1.5 text-xs text-ink-soft">
+        <p className="mt-1 text-xs text-ink-soft">
           {variant.stock === 0 ? "Out of stock" : variant.stock <= 5 ? `Only ${variant.stock} left in stock` : "In stock"}
         </p>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Button size="md" disabled={variant.stock === 0} onClick={() => handleAdd(false)}>
+      <div className="flex flex-col gap-1.5">
+        <Button size="md" className="py-2.5" disabled={variant.stock === 0} onClick={() => handleAdd(false)}>
           Add to Cart
         </Button>
         {!compact && (
-          <Button size="md" variant="secondary" disabled={variant.stock === 0} onClick={() => handleAdd(true)}>
+          <Button size="md" className="py-2.5" variant="secondary" disabled={variant.stock === 0} onClick={() => handleAdd(true)}>
             Buy Now
           </Button>
         )}

@@ -20,7 +20,9 @@ export function normalizePhone(raw: string): string | null {
   return parsed?.isValid() ? parsed.number : null;
 }
 
-type SendOtpResult = { ok: true; cooldownSeconds: number } | { ok: false; error: string; code: "INVALID_PHONE" | "COOLDOWN" | "RATE_LIMITED" };
+type SendOtpResult =
+  | { ok: true; cooldownSeconds: number; devCode?: string }
+  | { ok: false; error: string; code: "INVALID_PHONE" | "COOLDOWN" | "RATE_LIMITED" };
 
 export async function sendOtp({
   phone: rawPhone,
@@ -83,7 +85,11 @@ export async function sendOtp({
     console.error("[otp] notify(SMS) failed", err);
   }
 
-  return { ok: true, cooldownSeconds: OTP_RESEND_COOLDOWN_SECONDS };
+  return {
+    ok: true,
+    cooldownSeconds: OTP_RESEND_COOLDOWN_SECONDS,
+    devCode: process.env.NODE_ENV !== "production" ? code : undefined,
+  };
 }
 
 type VerifyOtpResult =

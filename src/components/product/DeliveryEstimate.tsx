@@ -57,20 +57,25 @@ export function DeliveryEstimate({
     : { min: null, max: null };
 
   return (
-    <div ref={rootRef} className="relative flex items-center justify-between gap-3 border border-success/20 bg-success/10 px-4 py-3 text-sm">
-      <div className="flex items-center gap-2.5">
-        <MapPin size={17} className="shrink-0 text-success" />
+    <div
+      ref={rootRef}
+      className="relative flex items-center justify-between gap-2.5 rounded-xl border border-line/60 bg-paper-raise px-3 py-2 text-xs shadow-[var(--shadow-panel)]"
+    >
+      <div className="flex items-center gap-2">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-success/10 text-success">
+          <MapPin size={13} />
+        </span>
         <div>
           {!inStock ? (
             <p className="font-medium text-ink">Currently unavailable</p>
           ) : location ? (
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
               <span className="font-medium text-ink">
                 Delivery to {location.city}
                 {location.state ? `, ${location.state}` : ""}
               </span>
               {min && max && (
-                <span className="bg-success px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.04em] text-paper">
+                <span className="rounded-full bg-success px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.04em] text-paper">
                   Est. Delivery: {formatDeliveryRange(min, max)}
                 </span>
               )}
@@ -87,13 +92,13 @@ export function DeliveryEstimate({
         type="button"
         onClick={() => setEditing((v) => !v)}
         aria-label="Edit delivery location"
-        className="flex h-9 w-9 shrink-0 items-center justify-center border border-line bg-paper hover:border-ink"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line bg-paper transition-colors hover:border-ink hover:bg-paper-dim"
       >
-        <Pencil size={14} />
+        <Pencil size={12} />
       </button>
 
       {editing && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-full min-w-[280px] border border-line bg-paper p-4 shadow-lg sm:w-96">
+        <div className="absolute right-0 top-full z-20 mt-2 w-full min-w-[280px] rounded-2xl border border-line/60 bg-paper-raise p-4 shadow-[var(--shadow-lift)] sm:w-96">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-xs uppercase tracking-[0.1em] text-ink-soft">Delivery Location</p>
             <button onClick={() => setEditing(false)} aria-label="Close" className="text-ink-soft hover:text-ink">

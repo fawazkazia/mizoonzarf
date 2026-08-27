@@ -152,5 +152,5 @@ export function PaymentBrandRow({ id, className }: { id: string; className?: str
     TAMARA: <TamaraMark />,
   };
 
-  return <span className={cn("flex shrink-0 items-center gap-1.5", className)}>{marks[id] ?? null}</span>;
+  return <span className={cn("flex flex-wrap items-center justify-center gap-1", className)}>{marks[id] ?? null}</span>;
 }

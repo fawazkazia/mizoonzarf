@@ -1221,7 +1221,7 @@ async function main() {
   console.log("Creating settings...");
   await db.setting.create({ data: { key: "brandName", value: "Maison Luxe", group: "brand" } });
   await db.setting.create({ data: { key: "whatsappNumber", value: "919501234567", group: "general" } });
-  await db.setting.create({ data: { key: "supportEmail", value: "care@maisonluxe.in", group: "general" } });
+  await db.setting.create({ data: { key: "supportEmail", value: "info@mizoonzarf.in", group: "general" } });
 
   console.log("Creating notification templates...");
   const notificationTemplates: { key: string; channel: "EMAIL" | "SMS"; subject?: string; body: string; variables: string[] }[] = [

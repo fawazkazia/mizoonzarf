@@ -28,5 +28,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: result.error, code: result.code }, { status });
   }
 
-  return NextResponse.json({ ok: true, cooldownSeconds: result.cooldownSeconds });
+  return NextResponse.json({ ok: true, cooldownSeconds: result.cooldownSeconds, devCode: result.devCode });
 }

@@ -66,7 +66,7 @@ export function Gallery({ images, productName }: { images: { url: string; altTex
         </div>
 
         <div
-          className="relative flex-1 overflow-hidden bg-paper-dim [@media(hover:hover)]:cursor-zoom-in"
+          className="relative aspect-[4/5] max-h-[620px] flex-1 overflow-hidden bg-paper-dim [@media(hover:hover)]:cursor-zoom-in"
           onMouseMove={(e) => {
             if (!window.matchMedia("(hover: hover)").matches) return;
             const rect = e.currentTarget.getBoundingClientRect();
@@ -74,16 +74,14 @@ export function Gallery({ images, productName }: { images: { url: string; altTex
           }}
           onMouseLeave={() => setZoom(null)}
         >
-          <div className="aspect-[4/5] max-h-[calc(100vh-100px)]">
-            <Img
-              src={list[active].url}
-              alt={list[active].altText ?? productName}
-              seedFallback={`${productName}-${active}`}
-              priority
-              className={cn("object-contain transition-transform duration-200", zoom && "scale-[1.8]")}
-              style={zoom ? { transformOrigin: `${zoom.x}% ${zoom.y}%` } : undefined}
-            />
-          </div>
+          <Img
+            src={list[active].url}
+            alt={list[active].altText ?? productName}
+            seedFallback={`${productName}-${active}`}
+            priority
+            className={cn("object-contain transition-transform duration-200", zoom && "scale-[1.8]")}
+            style={zoom ? { transformOrigin: `${zoom.x}% ${zoom.y}%` } : undefined}
+          />
           <button
             onClick={() => setLightboxOpen(true)}
             aria-label="View full screen"

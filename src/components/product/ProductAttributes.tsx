@@ -19,13 +19,13 @@ interface Props {
 
 function Section({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
   return (
-    <details className="group border-t border-line py-5 first:border-t-0" open={defaultOpen}>
-      <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-medium uppercase tracking-[0.08em]">
+    <details className="group border-t border-line py-3.5 first:border-t-0" open={defaultOpen}>
+      <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-medium uppercase tracking-[0.08em]">
         {title}
-        <Plus size={15} className="transition-transform group-open:hidden" />
-        <Minus size={15} className="hidden transition-transform group-open:block" />
+        <Plus size={14} className="transition-transform group-open:hidden" />
+        <Minus size={14} className="hidden transition-transform group-open:block" />
       </summary>
-      <div className="mt-3 text-sm leading-relaxed text-ink-soft">{children}</div>
+      <div className="mt-2 text-sm leading-relaxed text-ink-soft">{children}</div>
     </details>
   );
 }

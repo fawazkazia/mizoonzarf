@@ -30,12 +30,13 @@ export async function POST(req: NextRequest) {
 
   // Server-side enforcement of mobile verification — the frontend also gates this, but a
   // request straight to this endpoint (bypassing the UI) must be refused here too.
+  // Only COD requires it for now; prepaid orders already carry payment-provider risk checks.
   const phoneVerified = await resolveCheckoutPhoneVerification({
     phone: input.phone,
     userId: session?.user?.id,
     guestPhoneToken: req.cookies.get(GUEST_PHONE_TOKEN_COOKIE)?.value,
   });
-  if (!phoneVerified) {
+  if (input.paymentMethod === "COD" && !phoneVerified) {
     return NextResponse.json(
       { error: "Please verify your mobile number before placing your order.", code: "PHONE_NOT_VERIFIED" },
       { status: 403 }
@@ -167,7 +168,7 @@ export async function POST(req: NextRequest) {
         riskLevel: risk.riskLevel,
         riskScore: risk.riskScore,
         riskReasons: risk.riskReasons,
-        phoneVerified: true,
+        phoneVerified,
         codConfirmedAt,
         items: {
           create: cart.items.map((item, i) => ({

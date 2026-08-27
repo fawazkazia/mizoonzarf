@@ -111,7 +111,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   taxPercent: 18,
   taxInclusive: true,
   whatsappNumber: "919500000000",
-  supportEmail: "care@maisonluxe.com",
+  supportEmail: "info@mizoonzarf.in",
   gst: {
     sellerGstin: "",
     sellerState: "",

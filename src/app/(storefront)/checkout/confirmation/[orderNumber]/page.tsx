@@ -46,20 +46,22 @@ export default async function ConfirmationPage({ params, searchParams }: PagePro
   }
 
   return (
-    <Container className="mx-auto max-w-3xl py-20 text-center">
-      <CheckCircle2 size={48} className="mx-auto text-success" strokeWidth={1.2} />
-      <h1 className="mt-6 font-display text-4xl">Thank You!</h1>
-      <p className="mt-3 text-ink-soft">
-        Your order <strong>{order.orderNumber}</strong> has been placed. We&apos;ve sent a confirmation to your email.
-      </p>
-
-      {order.paymentMethod !== "COD" && order.paymentStatus === "PENDING" && (
-        <p className="mt-3 flex items-center justify-center gap-1.5 text-sm text-ink-soft">
-          <Clock size={14} /> Payment is still processing — we&apos;ll email you once it&apos;s confirmed.
+    <Container className="py-20 text-center">
+      <div className="mx-auto max-w-3xl">
+        <CheckCircle2 size={48} className="mx-auto text-success" strokeWidth={1.2} />
+        <h1 className="mt-6 font-display text-4xl">Thank You!</h1>
+        <p className="mt-3 text-ink-soft">
+          Your order <strong>{order.orderNumber}</strong> has been placed. We&apos;ve sent a confirmation to your email.
         </p>
-      )}
 
-      <div className="mt-10 text-left">
+        {order.paymentMethod !== "COD" && order.paymentStatus === "PENDING" && (
+          <p className="mt-3 flex items-center justify-center gap-1.5 text-sm text-ink-soft">
+            <Clock size={14} /> Payment is still processing — we&apos;ll email you once it&apos;s confirmed.
+          </p>
+        )}
+      </div>
+
+      <div className="mx-auto mt-10 max-w-5xl text-left">
         <OrderTimeline
           status={order.status}
           statusHistory={order.statusHistory}
@@ -88,7 +90,7 @@ export default async function ConfirmationPage({ params, searchParams }: PagePro
         />
       </div>
 
-      <div className="mt-10 border border-line p-6 text-left">
+      <div className="mx-auto mt-10 max-w-3xl border border-line p-6 text-left">
         <h2 className="mb-4 font-display text-xl">Order Details</h2>
         <ul className="flex flex-col gap-3">
           {order.items.map((item) => (
@@ -107,7 +109,7 @@ export default async function ConfirmationPage({ params, searchParams }: PagePro
         <p className="mt-2 text-xs text-ink-soft">Payment method: {order.paymentMethod.replace("_", " ")}</p>
       </div>
 
-      <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
+      <div className="mx-auto mt-10 flex max-w-3xl flex-col justify-center gap-3 sm:flex-row">
         <ButtonLink href={session?.user && order.userId === session.user.id ? `/account/orders/${order.id}` : `/track-order?order=${order.orderNumber}`}>
           Track Your Order
         </ButtonLink>

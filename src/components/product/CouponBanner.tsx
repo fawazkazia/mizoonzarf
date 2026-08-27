@@ -36,23 +36,25 @@ export function CouponBanner({
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border border-success/20 bg-success/10 px-4 py-3 text-sm">
-      <div className="flex items-center gap-2.5">
-        <Tag size={16} className="shrink-0 text-success" />
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line/60 bg-paper-raise px-3 py-2 text-xs shadow-[var(--shadow-panel)]">
+      <div className="flex items-center gap-2">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold/10 text-gold-deep">
+          <Tag size={13} />
+        </span>
         <span className="font-medium text-ink">{description ?? fallbackCopy}</span>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <button
           type="button"
           onClick={handleCopy}
-          className="flex items-center gap-1.5 border border-line bg-paper px-3 py-1.5 text-xs font-medium uppercase tracking-[0.06em] hover:border-ink"
+          className="flex items-center gap-1 rounded-full border border-dashed border-line-strong bg-paper-dim px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.06em] transition-colors hover:border-ink"
         >
-          {code} {copied ? <Check size={13} /> : <Copy size={13} />}
+          {code} {copied ? <Check size={12} /> : <Copy size={12} />}
         </button>
         <button
           type="button"
           onClick={() => applyCoupon(code)}
-          className="link-reveal text-xs uppercase tracking-[0.1em] text-ink-soft"
+          className="rounded-full bg-ink px-3 py-1 text-[10px] font-medium uppercase tracking-[0.08em] text-paper transition-colors hover:bg-ink-soft"
         >
           Apply
         </button>
