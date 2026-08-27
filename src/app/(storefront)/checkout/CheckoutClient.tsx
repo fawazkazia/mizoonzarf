@@ -82,19 +82,23 @@ function loadRazorpayScript(): Promise<void> {
 }
 
 /** Approximates a concrete ETA from the free-text "3-5 business days" style
- * settings copy — takes the leading number as the day count. */
+ * settings copy — takes the leading number as the day count. Computed in UTC
+ * so the server (SSR) and client (hydration) always agree regardless of each
+ * one's local timezone — using local-timezone getters here previously caused
+ * a hydration mismatch whenever the server's TZ and the visitor's browser TZ
+ * disagreed on what "today" is. */
 function estimateDeliveryDate(daysLabel: string, processingDays: number): Date {
   const match = daysLabel.match(/\d+/);
   const days = match ? parseInt(match[0], 10) : 3;
   const date = new Date();
-  date.setDate(date.getDate() + processingDays + days);
+  date.setUTCDate(date.getUTCDate() + processingDays + days);
   return date;
 }
 
 function formatDeliveryDate(date: Date): string {
-  const day = date.getDate();
-  const month = date.toLocaleString("en-IN", { month: "short" });
-  const weekday = date.toLocaleString("en-IN", { weekday: "short" });
+  const day = date.getUTCDate();
+  const month = date.toLocaleString("en-IN", { month: "short", timeZone: "UTC" });
+  const weekday = date.toLocaleString("en-IN", { weekday: "short", timeZone: "UTC" });
   return `${day} ${month}, ${weekday}`;
 }
 
