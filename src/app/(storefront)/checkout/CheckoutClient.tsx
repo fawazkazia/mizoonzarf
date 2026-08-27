@@ -171,6 +171,7 @@ export function CheckoutClient({
   const [notes, setNotes] = useState("");
   const [gstin, setGstin] = useState("");
   const [loading, setLoading] = useState(false);
+  const [orderPlaced, setOrderPlaced] = useState(false);
 
   const [promoExpanded, setPromoExpanded] = useState(false);
   const [promoCode, setPromoCode] = useState("");
@@ -329,6 +330,7 @@ export function CheckoutClient({
       return;
     }
 
+    setOrderPlaced(true);
     await cart.fetchCart();
 
     if (data.redirectUrl) {
@@ -395,7 +397,7 @@ export function CheckoutClient({
     await submitOrder(finalAddress);
   }
 
-  if (cart.hasFetched && cart.lines.length === 0) {
+  if (cart.hasFetched && cart.lines.length === 0 && !orderPlaced) {
     return (
       <Container className="py-32 text-center">
         <h1 className="font-display text-3xl">Your bag is empty</h1>
