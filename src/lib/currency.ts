@@ -13,3 +13,19 @@ export function formatINR(amount: number): string {
     maximumFractionDigits: 2,
   }).format(amount);
 }
+
+/**
+ * Builds the running-banner message list from settings — shared by
+ * HeaderRunningBanner (site-wide chrome) and the homepage's own
+ * `runningBanner` section so they never drift out of sync. Lives here
+ * (not settings.ts) because settings.ts imports the Prisma client and
+ * this needs to be safe to call from a "use client" component.
+ */
+export function buildHeaderPromoMessages(settings: {
+  header: { showFreeShipping: boolean; promoMessages: string[] };
+  shipping: { freeShippingThreshold: number };
+}): string[] {
+  return settings.header.showFreeShipping
+    ? [`Free shipping on orders over ${formatINR(settings.shipping.freeShippingThreshold)}`, ...settings.header.promoMessages]
+    : settings.header.promoMessages;
+}

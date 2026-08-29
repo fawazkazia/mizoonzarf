@@ -122,7 +122,7 @@ function StepGrid({
  * filter, now a stepped one-question-at-a-time flow instead of five stacked
  * pill groups. Framed as "our stylists' picks" rather than implying AI,
  * since this is a plain filter, not a generative call. */
-export function StyleFinder() {
+export function StyleFinder({ eyebrow = "Style Finder", heading = "Find Your Style" }: { eyebrow?: string; heading?: string }) {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>(EMPTY_ANSWERS);
   const [results, setResults] = useState<ProductCardData[] | null>(null);
@@ -179,11 +179,11 @@ export function StyleFinder() {
         </div>
         <Container className="relative">
           <div className="mb-6 text-center">
-            <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-gold-soft">
-              <Sparkles size={14} /> Style Finder
+            <p className="hp-accent-soft-text inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em]">
+              <Sparkles size={14} /> {eyebrow}
             </p>
-            <h2 className="mt-3 font-display text-3xl sm:text-4xl">Find Your Style</h2>
-            <p className="mx-auto mt-3 max-w-lg text-sm text-paper/60">
+            <h2 className="hp-heading mt-3 font-display text-3xl sm:text-4xl">{heading}</h2>
+            <p className="hp-body mx-auto mt-3 max-w-lg text-sm text-paper/60">
               Answer a few questions — our stylists&apos; picks from the full collection, matched to you.
             </p>
           </div>

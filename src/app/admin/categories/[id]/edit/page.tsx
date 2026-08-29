@@ -28,6 +28,7 @@ export default async function EditCategoryPage({ params }: PageProps) {
           slug: category.slug,
           description: category.description ?? "",
           imageUrl: category.imageUrl,
+          imageObjectPosition: category.imageObjectPosition,
           gender: category.gender ?? "",
           parentId: category.parentId ?? "",
           sortOrder: category.sortOrder,

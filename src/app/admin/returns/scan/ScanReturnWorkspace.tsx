@@ -9,6 +9,7 @@ import { Field, Select, Input } from "@/components/admin/FormField";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { scanReturnItem, resolveReturn } from "../actions";
+import { formatAttrs } from "@/lib/inventory/variant-attributes";
 import type { ReturnResolution } from "@/generated/prisma/client";
 
 type ScanResult = Awaited<ReturnType<typeof scanReturnItem>>;
@@ -81,7 +82,7 @@ export function ScanReturnWorkspace({ warehouses }: { warehouses: { id: string; 
           <div className="border border-line p-4">
             <p className="font-display text-lg">{result.variant.productName}</p>
             <p className="text-sm text-ink-soft">
-              {[result.variant.size, result.variant.color].filter(Boolean).join(" / ") || "Default"} · SKU {result.variant.sku}
+              {formatAttrs(result.variant.attributes) || "Default"} · SKU {result.variant.sku}
             </p>
           </div>
 

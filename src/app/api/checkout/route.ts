@@ -12,6 +12,8 @@ import { maybeAutoCreateShipment } from "@/lib/shipping/orchestrator";
 import { resolveCheckoutPhoneVerification } from "@/lib/otp/checkout-verification";
 import { GUEST_PHONE_TOKEN_COOKIE, COD_CONFIRM_VALIDITY_MINUTES } from "@/lib/otp/constants";
 import { computeOrderRisk } from "@/lib/risk/computeOrderRisk";
+import { variantAttrs, formatAttrs } from "@/lib/inventory/variant-attributes";
+import type { Prisma } from "@/generated/prisma/client";
 
 export async function POST(req: NextRequest) {
   const body = checkoutSchema.safeParse(await req.json());
@@ -175,7 +177,8 @@ export async function POST(req: NextRequest) {
             productId: item.productId,
             variantId: item.variantId,
             productName: item.product.name,
-            variantLabel: [item.variant.size, item.variant.color].filter(Boolean).join(" / ") || null,
+            variantLabel: formatAttrs(variantAttrs(item.variant)) || null,
+            variantAttributes: variantAttrs(item.variant) as unknown as Prisma.InputJsonValue,
             sku: item.variant.sku,
             price: item.variant.salePrice ?? item.variant.price,
             quantity: item.quantity,

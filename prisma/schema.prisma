@@ -107,6 +107,17 @@ enum BannerTextSize {
   LARGE
 }
 
+/// CSS object-position preset for homepage/admin image fields — a cheap
+/// alternative to full crop/focal-point tooling. Null means "use the
+/// component's own default" (each consumer picks its own fallback).
+enum ObjectPosition {
+  CENTER
+  TOP
+  BOTTOM
+  LEFT
+  RIGHT
+}
+
 enum NotificationChannel {
   EMAIL
   SMS
@@ -200,8 +211,8 @@ model User {
   phoneVerifiedAt DateTime?
 
   /// Computed by recomputeUserReliability() on order status transitions — see src/lib/risk/recomputeReliability.ts.
-  reliabilityStatus    ReliabilityStatus @default(NORMAL)
-  reliabilityUpdatedAt DateTime?
+  reliabilityStatus       ReliabilityStatus  @default(NORMAL)
+  reliabilityUpdatedAt    DateTime?
   /// Manual admin override — when set, takes precedence over reliabilityStatus everywhere and is never touched by recomputation.
   reliabilityOverride     ReliabilityStatus?
   reliabilityOverrideNote String?
@@ -313,21 +324,22 @@ model VerificationToken {
 // ---------- Catalog ----------
 
 model Category {
-  id              String   @id @default(cuid())
-  name            String
-  slug            String   @unique
-  description     String?
-  imageUrl        String?
-  gender          Gender?
-  parentId        String?
-  sortOrder       Int      @default(0)
-  isActive        Boolean  @default(true)
-  showInMenu      Boolean  @default(true)
-  attributeSchema Json?
-  seoTitle        String?
-  seoDescription  String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                  String          @id @default(cuid())
+  name                String
+  slug                String          @unique
+  description         String?
+  imageUrl            String?
+  gender              Gender?
+  parentId            String?
+  sortOrder           Int             @default(0)
+  isActive            Boolean         @default(true)
+  showInMenu          Boolean         @default(true)
+  attributeSchema     Json?
+  seoTitle            String?
+  seoDescription      String?
+  imageObjectPosition ObjectPosition?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 
   parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
   children Category[] @relation("CategoryTree")
@@ -350,16 +362,17 @@ model Brand {
 }
 
 model Collection {
-  id          String    @id @default(cuid())
-  name        String
-  slug        String    @unique
-  description String?
-  imageUrl    String?
-  isActive    Boolean   @default(true)
-  startDate   DateTime?
-  endDate     DateTime?
-  sortOrder   Int       @default(0)
-  createdAt   DateTime  @default(now())
+  id                  String          @id @default(cuid())
+  name                String
+  slug                String          @unique
+  description         String?
+  imageUrl            String?
+  imageObjectPosition ObjectPosition?
+  isActive            Boolean         @default(true)
+  startDate           DateTime?
+  endDate             DateTime?
+  sortOrder           Int             @default(0)
+  createdAt           DateTime        @default(now())
 
   products Product[] @relation("CollectionProducts")
 
@@ -401,20 +414,59 @@ model Product {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  brand       Brand?           @relation(fields: [brandId], references: [id])
-  category    Category         @relation(fields: [categoryId], references: [id])
-  variants    ProductVariant[]
-  images      ProductImage[]
-  reviews     Review[]
-  wishlisted  WishlistItem[]
-  cartItems   CartItem[]
-  orderItems  OrderItem[]
-  collections Collection[]     @relation("CollectionProducts")
+  brand             Brand?                    @relation(fields: [brandId], references: [id])
+  category          Category                  @relation(fields: [categoryId], references: [id])
+  variants          ProductVariant[]
+  variantAttributes ProductVariantAttribute[]
+  images            ProductImage[]
+  reviews           Review[]
+  wishlisted        WishlistItem[]
+  cartItems         CartItem[]
+  orderItems        OrderItem[]
+  collections       Collection[]              @relation("CollectionProducts")
 
   @@index([categoryId])
   @@index([brandId])
   @@index([status])
   @@map("products")
+}
+
+/// Product-scoped, ordered variant attribute definitions (e.g. "Size", "Colour", "Waist") —
+/// lets each product declare its own set of variant axes instead of a hardcoded Size+Colour pair.
+model ProductVariantAttribute {
+  id        String   @id @default(cuid())
+  productId String
+  name      String
+  isColor   Boolean  @default(false)
+  position  Int      @default(0)
+  /// Ordered value pool for this axis: [{ value: string, hex?: string }]. Recomputed server-side
+  /// from the product's actual variants on every save — never trust this as client-authoritative.
+  values    Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, name])
+  @@index([productId])
+  @@map("product_variant_attributes")
+}
+
+/// Global, reusable pool of values seen for each attribute name (e.g. "Size" -> S/M/L/XL) so the
+/// admin can pick from values used on past products instead of retyping them on every new one.
+/// One row per attribute name; not product-scoped. Populated additively — adding a value here
+/// never removes it from elsewhere, and removing a value from one product's variant list does
+/// not touch this pool (other products may still rely on it).
+model AttributeValueLibrary {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  isColor   Boolean  @default(false)
+  /// Ordered value pool: [{ value: string, hex?: string }], deduped case-insensitively by value.
+  values    Json     @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("attribute_value_library")
 }
 
 model ProductVariant {
@@ -428,6 +480,11 @@ model ProductVariant {
   size               String?
   color              String?
   colorHex           String?
+  /// Ordered [{ name, value, hex? }] — the canonical attribute combination for this variant.
+  /// `size`/`color`/`colorHex` above are auto-derived mirrors kept in sync for legacy readers
+  /// (catalog facets/filters) and pre-migration rows; write code should treat this field as the
+  /// source of truth and always recompute the mirrors from it.
+  attributeValues    Json           @default("[]")
   price              Decimal        @db.Decimal(10, 2)
   salePrice          Decimal?       @db.Decimal(10, 2)
   stock              Int            @default(0)
@@ -608,11 +665,11 @@ model Order {
   updatedAt        DateTime      @updatedAt
 
   /// Fraud-risk snapshot computed at checkout — see src/lib/risk/computeOrderRisk.ts. Never auto-rejects; admins act on it.
-  riskLevel   RiskLevel @default(NORMAL)
-  riskScore   Int       @default(0)
-  riskReasons String[]  @default([])
+  riskLevel      RiskLevel @default(NORMAL)
+  riskScore      Int       @default(0)
+  riskReasons    String[]  @default([])
   /// Whether the contact phone was verified at the moment this order was placed (server-enforced, not just a UI flag).
-  phoneVerified Boolean @default(false)
+  phoneVerified  Boolean   @default(false)
   /// Set when a HIGH-risk COD order was unlocked via COD_RISK_CONFIRM OTP re-verification.
   codConfirmedAt DateTime?
 
@@ -631,19 +688,22 @@ model Order {
 }
 
 model OrderItem {
-  id             String  @id @default(cuid())
-  orderId        String
-  productId      String
-  variantId      String
-  productName    String
-  variantLabel   String?
-  sku            String
-  price          Decimal @db.Decimal(10, 2)
-  quantity       Int
-  subtotal       Decimal @db.Decimal(10, 2)
-  gstRate        Decimal @default(0) @db.Decimal(5, 2)
-  hsnCode        String?
-  packedQuantity Int     @default(0)
+  id                String  @id @default(cuid())
+  orderId           String
+  productId         String
+  variantId         String
+  productName       String
+  variantLabel      String?
+  /// Structured snapshot of the variant's attributes at order time: [{ name, value, hex? }].
+  /// Null on historical orders predating this field — those fall back to `variantLabel`.
+  variantAttributes Json?
+  sku               String
+  price             Decimal @db.Decimal(10, 2)
+  quantity          Int
+  subtotal          Decimal @db.Decimal(10, 2)
+  gstRate           Decimal @default(0) @db.Decimal(5, 2)
+  hsnCode           String?
+  packedQuantity    Int     @default(0)
 
   order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product        @relation(fields: [productId], references: [id])
@@ -956,28 +1016,29 @@ model Promotion {
 }
 
 model Banner {
-  id               String         @id @default(cuid())
-  title            String
-  subtitle         String?
-  titleColor       String?
-  subtitleColor    String?
-  titleSize        BannerTextSize @default(MEDIUM)
+  id                  String          @id @default(cuid())
+  title               String
+  subtitle            String?
+  titleColor          String?
+  subtitleColor       String?
+  titleSize           BannerTextSize  @default(MEDIUM)
   /// Percentage (0-100) placement of the title/subtitle/button block over the
   /// desktop image, set via the admin drag-to-position picker. Null on both
   /// means "use the component's default layout" — mobile always ignores these
   /// and keeps its fixed stacked layout regardless.
-  contentPositionX Float?
-  contentPositionY Float?
-  imageUrl         String
-  mobileImageUrl   String?
-  ctaText          String?
-  ctaLink          String?
-  position         BannerPosition
-  sortOrder        Int            @default(0)
-  startDate        DateTime?
-  endDate          DateTime?
-  isActive         Boolean        @default(true)
-  createdAt        DateTime       @default(now())
+  contentPositionX    Float?
+  contentPositionY    Float?
+  imageUrl            String
+  mobileImageUrl      String?
+  imageObjectPosition ObjectPosition?
+  ctaText             String?
+  ctaLink             String?
+  position            BannerPosition
+  sortOrder           Int             @default(0)
+  startDate           DateTime?
+  endDate             DateTime?
+  isActive            Boolean         @default(true)
+  createdAt           DateTime        @default(now())
 
   @@index([position])
   @@map("banners")

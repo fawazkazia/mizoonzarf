@@ -1,16 +1,31 @@
 import { z } from "zod";
 
+export const variantAttrInputSchema = z.object({
+  name: z.string().min(1),
+  value: z.string().min(1),
+  hex: z.string().optional(),
+});
+
 export const variantInputSchema = z.object({
   id: z.string().optional(),
   sku: z.string().min(1, "Variant SKU is required"),
   barcode: z.string().optional(),
+  // Legacy mirror fields — always recomputed server-side from attributeValues, never trusted from the client.
   size: z.string().optional(),
   color: z.string().optional(),
   colorHex: z.string().optional(),
+  attributeValues: z.array(variantAttrInputSchema).default([]),
   price: z.coerce.number().min(0),
   salePrice: z.coerce.number().min(0).optional().nullable(),
   stock: z.coerce.number().int().min(0),
   lowStockThreshold: z.coerce.number().int().min(0).default(5),
+});
+
+export const variantAttributeDefInputSchema = z.object({
+  name: z.string().min(1),
+  isColor: z.boolean().default(false),
+  position: z.number().default(0),
+  values: z.array(z.object({ value: z.string().min(1), hex: z.string().optional() })).default([]),
 });
 
 export const productInputSchema = z.object({
@@ -41,6 +56,7 @@ export const productInputSchema = z.object({
   seoDescription: z.string().optional(),
   images: z.array(z.string()).default([]),
   collectionSlugs: z.array(z.string()).default([]),
+  variantAttributes: z.array(variantAttributeDefInputSchema).default([]),
   variants: z.array(variantInputSchema).min(1, "At least one variant is required"),
 });
 

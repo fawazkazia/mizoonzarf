@@ -4,6 +4,7 @@ import { InventoryTabs } from "@/components/admin/barcode/InventoryTabs";
 import { Table, Th, Td, EmptyRow } from "@/components/admin/Table";
 import { Pagination } from "@/components/admin/Pagination";
 import { StatusFilterSelect } from "@/components/admin/StatusFilterSelect";
+import { formatVariantLabel } from "@/lib/inventory/variant-attributes";
 
 export const metadata = { title: "Stock Movements" };
 
@@ -83,7 +84,7 @@ export default async function StockMovementsPage({ searchParams }: PageProps) {
               <Td>
                 {m.variant.product.name}
                 <span className="ml-1 text-xs text-ink-soft">
-                  {[m.variant.size, m.variant.color].filter(Boolean).join("/")}
+                  {formatVariantLabel(m.variant)}
                 </span>
               </Td>
               <Td className="text-xs">{m.type.replace(/_/g, " ")}</Td>

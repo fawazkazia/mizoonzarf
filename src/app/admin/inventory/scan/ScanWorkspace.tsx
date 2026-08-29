@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { lookupBarcode, searchVariantsForAssignment } from "../scan-actions";
 import { stockIn, stockOut, transferStock } from "../stock-actions";
 import { assignManufacturerBarcode } from "../barcode-actions";
+import { formatAttrs } from "@/lib/inventory/variant-attributes";
 import type { BarcodeType } from "@/generated/prisma/client";
 
 type LookupResult = Awaited<ReturnType<typeof lookupBarcode>>;
@@ -158,7 +159,7 @@ export function ScanWorkspace({ warehouses }: { warehouses: { id: string; name: 
                         onClick={() => handleAssign(c.id)}
                         className="block w-full px-3 py-2 text-left text-sm hover:bg-paper-dim"
                       >
-                        {c.productName} — {[c.size, c.color].filter(Boolean).join(" / ") || "Default"}{" "}
+                        {c.productName} — {formatAttrs(c.attributes) || "Default"}{" "}
                         <span className="text-xs text-ink-soft">({c.sku})</span>
                       </button>
                     </li>
@@ -176,7 +177,7 @@ export function ScanWorkspace({ warehouses }: { warehouses: { id: string; name: 
             <p className="text-xs uppercase tracking-wide text-ink-soft">{result.product.status}</p>
             <h2 className="font-display text-xl">{result.product.name}</h2>
             <p className="text-sm text-ink-soft">
-              {[result.variant.size, result.variant.color].filter(Boolean).join(" / ") || "Default"} · SKU {result.variant.sku}
+              {formatAttrs(result.variant.attributes) || "Default"} · SKU {result.variant.sku}
             </p>
             <p className="mt-2 text-lg font-medium">
               {result.variant.salePrice ?? result.variant.price}

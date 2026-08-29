@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { ProductForm } from "../../ProductForm";
 import { getProductFormOptions } from "../../form-options";
+import { variantAttrs } from "@/lib/inventory/variant-attributes";
 
 export const metadata = { title: "Edit Product" };
 
@@ -14,7 +15,12 @@ export default async function EditProductPage({ params }: PageProps) {
   const [product, options] = await Promise.all([
     db.product.findUnique({
       where: { id },
-      include: { images: { orderBy: { sortOrder: "asc" } }, variants: { orderBy: { createdAt: "asc" } }, collections: true },
+      include: {
+        images: { orderBy: { sortOrder: "asc" } },
+        variants: { orderBy: { createdAt: "asc" } },
+        collections: true,
+        variantAttributes: { orderBy: { position: "asc" } },
+      },
     }),
     getProductFormOptions(),
   ]);
@@ -57,14 +63,18 @@ export default async function EditProductPage({ params }: PageProps) {
           seoDescription: product.seoDescription ?? "",
           images: product.images.map((i) => i.url),
           collectionSlugs: product.collections.map((c) => c.slug),
+          variantAttributes: product.variantAttributes.map((a) => ({
+            name: a.name,
+            isColor: a.isColor,
+            position: a.position,
+            values: a.values as { value: string; hex?: string }[],
+          })),
           variants: product.variants.map((v) => ({
             key: v.id,
             id: v.id,
             sku: v.sku,
             barcode: v.barcode ?? "",
-            size: v.size ?? "",
-            color: v.color ?? "",
-            colorHex: v.colorHex ?? "",
+            attributeValues: variantAttrs(v),
             price: String(v.price),
             salePrice: v.salePrice ? String(v.salePrice) : "",
             stock: String(v.stock),

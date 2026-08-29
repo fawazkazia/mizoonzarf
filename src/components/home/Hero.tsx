@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Img } from "@/components/ui/ArtImage";
 import { useHeroVisibilityStore } from "@/stores/hero-visibility-store";
+import { objectPositionClass, type ObjectPositionValue } from "@/lib/object-position";
 import { cn } from "@/lib/utils";
 
 export type BannerTextSize = "SMALL" | "MEDIUM" | "LARGE";
@@ -23,6 +24,7 @@ export interface HeroSlide {
   contentPositionY?: number | null;
   imageUrl: string;
   mobileImageUrl?: string | null;
+  imageObjectPosition?: ObjectPositionValue | null;
   ctaText: string | null;
   ctaLink: string | null;
 }
@@ -40,6 +42,17 @@ const SUBTITLE_SIZE_CLASS: Record<BannerTextSize, string> = {
 };
 
 const DWELL_MS = 3000;
+
+/** Each slide cycles through a different enter/exit transition (by index),
+ * rather than one uniform crossfade, so a run of slides doesn't feel
+ * repetitive. All still layer on top of the per-image Ken Burns zoom. */
+const SLIDE_TRANSITIONS = [
+  { idle: "opacity-0", active: "opacity-100", duration: "duration-700" }, // fade
+  { idle: "opacity-0 scale-110", active: "opacity-100 scale-100", duration: "duration-[900ms]" }, // zoom in
+  { idle: "opacity-0 translate-x-16", active: "opacity-100 translate-x-0", duration: "duration-700" }, // slide from right
+  { idle: "opacity-0 translate-y-12", active: "opacity-100 translate-y-0", duration: "duration-700" }, // slide from bottom
+  { idle: "opacity-0 -translate-x-16", active: "opacity-100 translate-x-0", duration: "duration-700" }, // slide from left
+] as const;
 
 function isVideoUrl(url: string) {
   return /\.(mp4|webm)$/i.test(url);
@@ -104,10 +117,15 @@ export function Hero({ slides }: { slides: HeroSlide[] }) {
     >
       {slides.map((s, i) => {
         const customPos = s.contentPositionX != null && s.contentPositionY != null;
+        const t = SLIDE_TRANSITIONS[i % SLIDE_TRANSITIONS.length];
         return (
         <div
           key={s.id}
-          className={cn("absolute inset-0 transition-opacity duration-700", i === index ? "opacity-100" : "pointer-events-none opacity-0")}
+          className={cn(
+            "absolute inset-0 transition-all ease-[var(--ease-out-soft)]",
+            t.duration,
+            i === index ? t.active : cn(t.idle, "pointer-events-none")
+          )}
           aria-hidden={i !== index}
         >
           {isVideoUrl(s.imageUrl) ? (
@@ -124,14 +142,14 @@ export function Hero({ slides }: { slides: HeroSlide[] }) {
                 src={s.mobileImageUrl || s.imageUrl}
                 alt={s.title}
                 priority={i === 0}
-                className={cn("lg:hidden", i === index && "animate-hero-zoom")}
+                className={cn("lg:hidden", objectPositionClass(s.imageObjectPosition), i === index && "animate-hero-zoom")}
               />
               <Img
                 key={i === index ? "desktop-active" : "desktop-idle"}
                 src={s.imageUrl}
                 alt={s.title}
                 priority={i === 0}
-                className={cn("hidden lg:block", i === index && "animate-hero-zoom")}
+                className={cn("hidden lg:block", objectPositionClass(s.imageObjectPosition), i === index && "animate-hero-zoom")}
               />
             </>
           )}

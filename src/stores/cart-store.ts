@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { toast } from "sonner";
+import type { VariantAttr } from "@/lib/inventory/variant-attributes";
 
 export interface CartLine {
   id: string;
@@ -9,8 +10,7 @@ export interface CartLine {
   productName: string;
   productSlug: string;
   variantId: string;
-  size: string | null;
-  color: string | null;
+  attributes: VariantAttr[];
   price: number;
   salePrice: number | null;
   quantity: number;

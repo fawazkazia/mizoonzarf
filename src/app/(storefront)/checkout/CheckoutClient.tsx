@@ -14,6 +14,7 @@ import { ScrollRail } from "@/components/ui/ScrollRail";
 import { useCartStore } from "@/stores/cart-store";
 import { useSettings } from "@/components/SettingsContext";
 import { formatINR } from "@/lib/currency";
+import { formatAttrs } from "@/lib/inventory/variant-attributes";
 import { estimatePointsEarned } from "@/lib/loyalty";
 import type { ActiveOffer } from "@/lib/data/offers";
 import { AddressForm, type AddressFormValue } from "@/components/checkout/AddressForm";
@@ -596,8 +597,11 @@ export function CheckoutClient({
                     <div className="flex flex-1 flex-col gap-1.5">
                       <p className="text-sm font-medium">{line.productName}</p>
                       <div className="flex flex-wrap gap-1.5">
-                        {line.color && <Badge tone="outline" className="normal-case">Color: {line.color}</Badge>}
-                        {line.size && <Badge tone="outline" className="normal-case">Size: {line.size}</Badge>}
+                        {line.attributes.map((a) => (
+                          <Badge key={a.name} tone="outline" className="normal-case">
+                            {a.name}: {a.value}
+                          </Badge>
+                        ))}
                       </div>
                       <Price price={line.salePrice ?? line.price} compareAt={line.salePrice ? line.price : null} size="sm" />
                       <div className="mt-1 flex items-center justify-between">
@@ -748,7 +752,7 @@ export function CheckoutClient({
                     </div>
                     <div className="flex-1 text-sm">
                       <p className="line-clamp-1">{line.productName}</p>
-                      <p className="text-ink-soft">{[line.size, line.color].filter(Boolean).join(" / ")}</p>
+                      <p className="text-ink-soft">{formatAttrs(line.attributes)}</p>
                     </div>
                     <span className="text-sm">{formatINR((line.salePrice ?? line.price) * line.quantity)}</span>
                   </li>

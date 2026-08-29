@@ -104,6 +104,7 @@
   --animate-hero-progress: hero-progress 3s linear forwards;
   --animate-hero-zoom: hero-zoom 3.3s var(--ease-out-soft) forwards;
   --animate-scan-line: scan-line 2s ease-in-out infinite;
+  --animate-ad-pan: ad-pan 9s var(--ease-in-out-soft) infinite alternate;
 
   @keyframes fade-up {
     from {
@@ -195,6 +196,14 @@
       top: 92%;
     }
   }
+  @keyframes ad-pan {
+    from {
+      transform: scale(1.02) translateX(0);
+    }
+    to {
+      transform: scale(1.12) translateX(-1.5%);
+    }
+  }
 }
 
 body {
@@ -220,6 +229,53 @@ h3,
 h4 {
   font-family: var(--font-sans);
   font-weight: 600;
+}
+
+/*
+ * Homepage theme layer (Admin > Homepage > Theme, src/lib/settings.ts
+ * `homepageTheme`). Deliberately separate `--hp-*` variables, NOT a reuse of
+ * the base `--color-*`/`--font-*` tokens above — those are shared sitewide
+ * (including by ProductCard, which also renders on PLP/search outside the
+ * homepage), so overriding them would silently re-theme shared components
+ * inconsistently between the homepage and everywhere else they appear. These
+ * utilities are applied only to homepage-exclusive chrome: section headings,
+ * eyebrows, and accent dividers. Defaults here match the current computed
+ * values exactly, so an unedited install renders identically.
+ */
+:root {
+  --hp-heading-font: var(--font-sans);
+  --hp-heading-weight: 700;
+  --hp-letter-spacing: normal;
+  --hp-line-height: normal;
+  --hp-body-font: var(--font-sans);
+  --hp-accent: var(--color-gold);
+  --hp-accent-soft: var(--color-gold-soft);
+  --hp-surface: var(--color-paper);
+  --hp-surface-dim: var(--color-paper-dim);
+  --hp-ink: var(--color-ink);
+}
+
+.hp-heading {
+  font-family: var(--hp-heading-font);
+  font-weight: var(--hp-heading-weight);
+  letter-spacing: var(--hp-letter-spacing);
+  line-height: var(--hp-line-height);
+}
+
+.hp-body {
+  font-family: var(--hp-body-font);
+}
+
+.hp-accent-text {
+  color: var(--hp-accent);
+}
+
+.hp-accent-soft-text {
+  color: var(--hp-accent-soft);
+}
+
+.hp-accent-bg {
+  background-color: var(--hp-accent);
 }
 
 ::selection {

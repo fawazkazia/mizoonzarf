@@ -5,9 +5,10 @@ import { ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { Container } from "@/components/ui/Container";
 import { Img } from "@/components/ui/ArtImage";
+import { objectPositionClass, type ObjectPositionValue } from "@/lib/object-position";
 import { cn } from "@/lib/utils";
 
-export function NewsletterForm({ dark = false }: { dark?: boolean }) {
+export function NewsletterForm({ dark = false, placeholder = "Your email address" }: { dark?: boolean; placeholder?: string }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -37,7 +38,7 @@ export function NewsletterForm({ dark = false }: { dark?: boolean }) {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="Your email address"
+          placeholder={placeholder}
           className={cn(
             "w-full bg-transparent py-2.5 text-sm outline-none",
             dark ? "text-paper placeholder:text-paper/40" : "text-ink placeholder:text-ink-soft/50"
@@ -56,17 +57,34 @@ export function NewsletterForm({ dark = false }: { dark?: boolean }) {
   );
 }
 
-export function NewsletterSection() {
+export function NewsletterSection({
+  heading = "Join the List",
+  subtitle = "Exclusive drops. No spam. Unsubscribe anytime.",
+  placeholder = "Your email address",
+  imageUrl,
+  objectPosition,
+}: {
+  heading?: string;
+  subtitle?: string;
+  placeholder?: string;
+  imageUrl?: string | null;
+  objectPosition?: ObjectPositionValue | null;
+}) {
   return (
     <section className="grid bg-ink text-paper lg:grid-cols-2">
-      <div className="hidden lg:block">
-        <Img src={null} alt="" seedFallback="newsletter-banner" className="h-full" />
+      <div className="relative hidden lg:block">
+        <Img
+          src={imageUrl}
+          alt=""
+          seedFallback="newsletter-banner"
+          className={cn("absolute inset-0", objectPositionClass(objectPosition))}
+        />
       </div>
-      <Container className="flex flex-col items-center justify-center gap-5 py-12 text-center sm:py-16 lg:items-start lg:px-16 lg:text-left">
-        <h2 className="font-display text-3xl sm:text-4xl">Join the List</h2>
-        <p className="max-w-md text-paper/70">Exclusive drops. No spam. Unsubscribe anytime.</p>
+      <Container className="flex flex-col items-center justify-center gap-5 py-16 text-center sm:py-20 lg:items-start lg:px-16 lg:py-24 lg:text-left">
+        <h2 className="hp-heading font-display text-3xl sm:text-4xl">{heading}</h2>
+        <p className="hp-body max-w-md text-paper/70">{subtitle}</p>
         <div className="w-full max-w-md">
-          <NewsletterForm dark />
+          <NewsletterForm dark placeholder={placeholder} />
         </div>
       </Container>
     </section>

@@ -16,6 +16,7 @@ function normalize(input: BannerInput) {
     contentPositionY: input.contentPositionY ?? null,
     imageUrl: input.imageUrl,
     mobileImageUrl: input.mobileImageUrl || null,
+    imageObjectPosition: input.imageObjectPosition || null,
     ctaText: input.ctaText || null,
     ctaLink: input.ctaLink || null,
     position: input.position,

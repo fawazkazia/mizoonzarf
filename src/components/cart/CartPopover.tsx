@@ -68,9 +68,7 @@ export function CartPopover({ onClose }: { onClose: () => void }) {
                       </select>
                     </div>
                     <p className="mt-0.5 text-xs text-ink-soft">
-                      {line.color && <>Color: {line.color}</>}
-                      {line.color && line.size && "  |  "}
-                      {line.size && <>Size: {line.size}</>}
+                      {line.attributes.map((a) => `${a.name}: ${a.value}`).join("  |  ")}
                     </p>
                     <div className="mt-1 flex items-center gap-2 text-sm">
                       <span className="font-medium">{formatINR(unitPrice)}</span>

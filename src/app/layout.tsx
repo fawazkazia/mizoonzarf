@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Manrope, Poppins } from "next/font/google";
+import { Cormorant_Garamond, Manrope, Poppins, Playfair_Display, Libre_Baskerville, DM_Serif_Display, Inter } from "next/font/google";
 import "./globals.css";
 import { getSettings } from "@/lib/settings";
 import { SettingsProvider } from "@/components/SettingsContext";
@@ -32,6 +32,14 @@ const poppins = Poppins({
   display: "swap",
 });
 
+// Curated extra options for Admin > Homepage > Theme's font pickers (see
+// src/lib/homepage-theme.ts). All preloaded regardless of which is active —
+// selecting one only swaps a CSS variable, no dynamic font loading.
+const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfair", display: "swap" });
+const libreBaskerville = Libre_Baskerville({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-libre-baskerville", display: "swap" });
+const dmSerif = DM_Serif_Display({ subsets: ["latin"], weight: "400", variable: "--font-dm-serif", display: "swap" });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSettings();
   return {
@@ -52,7 +60,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const settings = await getSettings();
 
   return (
-    <html lang="en" className={`${cormorant.variable} ${manrope.variable} ${poppins.variable}`}>
+    <html
+      lang="en"
+      className={`${cormorant.variable} ${manrope.variable} ${poppins.variable} ${playfair.variable} ${libreBaskerville.variable} ${dmSerif.variable} ${inter.variable}`}
+    >
       <body>
         <SettingsProvider value={settings}>
           <AppProviders>{children}</AppProviders>

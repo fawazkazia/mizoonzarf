@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { db } from "@/lib/db";
+import type { HomepageHeadingFont, HomepageBodyFont } from "@/lib/homepage-theme";
 
 export interface SiteSettings {
   brandName: string;
@@ -74,6 +75,8 @@ export interface SiteSettings {
   };
   branding: {
     logoUrl: string;
+    /** Falls back to `logoUrl` when unset — most stores don't need a separate mobile mark. */
+    mobileLogoUrl: string | null;
     faviconUrl: string;
   };
   /**
@@ -87,6 +90,29 @@ export interface SiteSettings {
     enabled: boolean;
     /** `country` is the ISO 3166-1 alpha-2 code (or "EU") used to look up that option's flag icon. */
     options: { code: string; symbol: string; rate: number; country: string; countryLabel: string }[];
+  };
+  /**
+   * Sitewide "homepage theme" — a single global color/typography layer for
+   * homepage-exclusive chrome (section headings, eyebrows, accent dividers),
+   * applied via dedicated `--hp-*` CSS variables so it never re-themes shared
+   * components (ProductCard etc.) that also render outside the homepage.
+   * Deliberately one global set, not per-section — see src/app/admin/homepage/theme.
+   */
+  homepageTheme: {
+    colors: {
+      accent: string;
+      accentSoft: string;
+      surface: string;
+      surfaceDim: string;
+      ink: string;
+    };
+    typography: {
+      headingFont: HomepageHeadingFont;
+      bodyFont: HomepageBodyFont;
+      headingWeight: "400" | "500" | "600" | "700";
+      letterSpacing: "tight" | "normal" | "wide";
+      lineHeight: "tight" | "normal" | "relaxed";
+    };
   };
   /** Admin-configurable COD availability + fraud-risk gating — enforced server-side in /api/checkout. */
   codRisk: {
@@ -177,6 +203,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   },
   branding: {
     logoUrl: "/images/logo.png",
+    mobileLogoUrl: null,
     faviconUrl: "",
   },
   currencyDisplay: {
@@ -194,6 +221,26 @@ const DEFAULT_SETTINGS: SiteSettings = {
     highValueCodThreshold: 3000,
     allowHighRiskCod: true,
     requireConfirmOnHighRiskCod: true,
+  },
+  homepageTheme: {
+    colors: {
+      accent: "#a9803f",
+      accentSoft: "#d8c39a",
+      surface: "#faf7f2",
+      surfaceDim: "#f1ece2",
+      ink: "#14130f",
+    },
+    typography: {
+      // Matches the current *rendered* default exactly: globals.css forces
+      // `.font-display`/h1/h2 to `--font-sans` (Manrope) at weight 700,
+      // overriding `--font-display` (Cormorant) sitewide — "cormorant" would
+      // visually change the homepage before any admin edit.
+      headingFont: "manrope",
+      bodyFont: "manrope",
+      headingWeight: "700",
+      letterSpacing: "normal",
+      lineHeight: "normal",
+    },
   },
 };
 
@@ -222,5 +269,9 @@ export const getSettings = cache(async (): Promise<SiteSettings> => {
     branding: { ...DEFAULT_SETTINGS.branding, ...(overrides.branding as object) },
     currencyDisplay: { ...DEFAULT_SETTINGS.currencyDisplay, ...(overrides.currencyDisplay as object) },
     codRisk: { ...DEFAULT_SETTINGS.codRisk, ...(overrides.codRisk as object) },
+    homepageTheme: {
+      colors: { ...DEFAULT_SETTINGS.homepageTheme.colors, ...((overrides.homepageTheme as { colors?: object })?.colors ?? {}) },
+      typography: { ...DEFAULT_SETTINGS.homepageTheme.typography, ...((overrides.homepageTheme as { typography?: object })?.typography ?? {}) },
+    },
   } as SiteSettings;
 });

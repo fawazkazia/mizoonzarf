@@ -8,6 +8,7 @@ export async function getProductBySlug(slug: string) {
       category: true,
       images: { orderBy: { sortOrder: "asc" } },
       variants: { orderBy: { price: "asc" } },
+      variantAttributes: { orderBy: { position: "asc" } },
       reviews: { where: { isApproved: true }, orderBy: { createdAt: "desc" }, take: 20 },
       collections: { select: { name: true, slug: true } },
     },

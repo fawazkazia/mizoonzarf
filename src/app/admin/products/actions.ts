@@ -1,82 +1,20 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/admin-auth";
 import { productInputSchema, type ProductInput } from "@/lib/validation/admin-product";
 import { notifyWishlistersOfProduct } from "@/lib/notifications/inapp";
 import { generateCode128 } from "@/lib/barcode/generate";
 import { getDefaultWarehouseId } from "@/lib/inventory/stock";
+import { deriveMirrorFields } from "@/lib/inventory/variant-attributes";
+import { friendlyBarcodeError, assertNoDuplicateCombos, baseProductData, revalidateProductPaths } from "./product-helpers";
 import type { Prisma } from "@/generated/prisma/client";
 
 /** New product/variant: keep an admin-typed code as a manufacturer barcode, otherwise auto-generate one. */
-async function variantBarcodeFields(tx: Prisma.TransactionClient, typed?: string) {
+export async function variantBarcodeFields(tx: Prisma.TransactionClient, typed?: string) {
   const trimmed = typed?.trim();
   if (trimmed) return { barcode: trimmed, barcodeType: "CODE128" as const, barcodeSource: "MANUFACTURER" as const, barcodeGeneratedAt: new Date() };
   return { barcode: await generateCode128(tx), barcodeType: "CODE128" as const, barcodeSource: "GENERATED" as const, barcodeGeneratedAt: new Date() };
-}
-
-function friendlyBarcodeError(err: unknown): never {
-  if (err && typeof err === "object" && "code" in err && err.code === "P2002") {
-    throw new Error("One of the barcodes entered is already assigned to another variant.");
-  }
-  throw err as Error;
-}
-
-function toTags(input?: string): string[] {
-  if (!input) return [];
-  return [...new Set(input.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean))];
-}
-
-function toNoteList(input?: string): string[] | undefined {
-  if (!input) return undefined;
-  const list = input.split(",").map((s) => s.trim()).filter(Boolean);
-  return list.length ? list : undefined;
-}
-
-function buildFragranceNotes(input: ProductInput) {
-  const notes = {
-    top: toNoteList(input.fragranceTopNotes),
-    heart: toNoteList(input.fragranceHeartNotes),
-    base: toNoteList(input.fragranceBaseNotes),
-  };
-  return notes.top || notes.heart || notes.base ? notes : undefined;
-}
-
-function baseProductData(input: ProductInput) {
-  const prices = input.variants.map((v) => v.price);
-  return {
-    name: input.name,
-    slug: input.slug,
-    sku: input.sku,
-    categoryId: input.categoryId,
-    brandId: input.brandId || null,
-    description: input.description,
-    shortDescription: input.shortDescription || null,
-    videoUrl: input.videoUrl || null,
-    basePrice: Math.min(...prices),
-    gender: input.gender,
-    material: input.material || null,
-    fitInfo: input.fitInfo || null,
-    careInstructions: input.careInstructions || null,
-    sizeGuideType: input.sizeGuideType || null,
-    fragranceFamily: input.fragranceFamily || null,
-    fragranceNotes: buildFragranceNotes(input),
-    concentration: input.concentration || null,
-    tags: toTags(input.tags),
-    gstRate: input.gstRate ?? null,
-    hsnCode: input.hsnCode || null,
-    status: input.status,
-    isFeatured: input.isFeatured,
-    seoTitle: input.seoTitle || null,
-    seoDescription: input.seoDescription || null,
-  };
-}
-
-function revalidateProductPaths(slug?: string) {
-  revalidatePath("/admin/products");
-  revalidatePath("/");
-  if (slug) revalidatePath(`/product/${slug}`);
 }
 
 export async function createProduct(raw: ProductInput) {
@@ -87,15 +25,15 @@ export async function createProduct(raw: ProductInput) {
   if (existingSku) throw new Error(`SKU "${input.sku}" is already in use.`);
   const existingSlug = await db.product.findUnique({ where: { slug: input.slug } });
   if (existingSlug) throw new Error(`Slug "${input.slug}" is already in use.`);
+  assertNoDuplicateCombos(input.variants);
 
   const product = await db.$transaction(async (tx) => {
     const variantsData = await Promise.all(
       input.variants.map(async (v) => ({
         sku: v.sku,
         ...(await variantBarcodeFields(tx, v.barcode)),
-        size: v.size || null,
-        color: v.color || null,
-        colorHex: v.colorHex || null,
+        attributeValues: v.attributeValues as unknown as Prisma.InputJsonValue,
+        ...deriveMirrorFields(v.attributeValues),
         price: v.price,
         salePrice: v.salePrice || null,
         stock: v.stock,
@@ -113,6 +51,14 @@ export async function createProduct(raw: ProductInput) {
             create: input.images.map((url, i) => ({ url, sortOrder: i, isPrimary: i === 0 })),
           },
           variants: { create: variantsData },
+          variantAttributes: {
+            create: input.variantAttributes.map((a) => ({
+              name: a.name,
+              isColor: a.isColor,
+              position: a.position,
+              values: a.values as unknown as Prisma.InputJsonValue,
+            })),
+          },
         },
         include: { variants: true },
       });
@@ -147,6 +93,7 @@ export async function updateProduct(id: string, raw: ProductInput) {
   if (conflictSku) throw new Error(`SKU "${input.sku}" is already in use.`);
   const conflictSlug = await db.product.findFirst({ where: { slug: input.slug, id: { not: id } } });
   if (conflictSlug) throw new Error(`Slug "${input.slug}" is already in use.`);
+  assertNoDuplicateCombos(input.variants);
 
   const existingVariants = await db.productVariant.findMany({
     where: { productId: id },
@@ -176,9 +123,8 @@ export async function updateProduct(id: string, raw: ProductInput) {
       for (const v of input.variants) {
         const common = {
           sku: v.sku,
-          size: v.size || null,
-          color: v.color || null,
-          colorHex: v.colorHex || null,
+          attributeValues: v.attributeValues as unknown as Prisma.InputJsonValue,
+          ...deriveMirrorFields(v.attributeValues),
           price: v.price,
           salePrice: v.salePrice || null,
           stock: v.stock,
@@ -213,6 +159,21 @@ export async function updateProduct(id: string, raw: ProductInput) {
       await tx.productImage.createMany({
         data: input.images.map((url, i) => ({ productId: id, url, sortOrder: i, isPrimary: i === 0 })),
       });
+
+      // Attribute defs have no FK from variants (each variant keeps its own JSON copy), so a
+      // clean delete-and-recreate per save is safe and avoids id-matching ambiguity.
+      await tx.productVariantAttribute.deleteMany({ where: { productId: id } });
+      if (input.variantAttributes.length > 0) {
+        await tx.productVariantAttribute.createMany({
+          data: input.variantAttributes.map((a) => ({
+            productId: id,
+            name: a.name,
+            isColor: a.isColor,
+            position: a.position,
+            values: a.values as unknown as Prisma.InputJsonValue,
+          })),
+        });
+      }
 
       await tx.product.update({
         where: { id },
@@ -259,7 +220,10 @@ export async function deleteProduct(id: string) {
 
 export async function duplicateProduct(id: string) {
   await requireStaff();
-  const product = await db.product.findUnique({ where: { id }, include: { images: true, variants: true, collections: true } });
+  const product = await db.product.findUnique({
+    where: { id },
+    include: { images: true, variants: true, collections: true, variantAttributes: true },
+  });
   if (!product) throw new Error("Product not found.");
 
   const suffix = Math.random().toString(36).slice(2, 6);
@@ -298,6 +262,7 @@ export async function duplicateProduct(id: string) {
             barcode: null,
             barcodeType: null,
             barcodeSource: null,
+            attributeValues: v.attributeValues as Prisma.InputJsonValue,
             size: v.size,
             color: v.color,
             colorHex: v.colorHex,
@@ -305,6 +270,14 @@ export async function duplicateProduct(id: string) {
             salePrice: v.salePrice,
             stock: v.stock,
             lowStockThreshold: v.lowStockThreshold,
+          })),
+        },
+        variantAttributes: {
+          create: product.variantAttributes.map((a) => ({
+            name: a.name,
+            isColor: a.isColor,
+            position: a.position,
+            values: a.values as Prisma.InputJsonValue,
           })),
         },
       },

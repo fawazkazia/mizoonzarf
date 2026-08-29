@@ -8,6 +8,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Sheet } from "@/components/ui/Sheet";
 import { useSettings } from "@/components/SettingsContext";
 import { formatINR } from "@/lib/currency";
+import { formatAttrs } from "@/lib/inventory/variant-attributes";
 
 export function CartDrawer() {
   const state = useCartStore();
@@ -86,7 +87,7 @@ export function CartDrawer() {
                     </Link>
                     <span className="text-sm">{formatINR((line.salePrice ?? line.price) * line.quantity)}</span>
                   </div>
-                  <p className="text-xs text-ink-mute">{[line.size, line.color].filter(Boolean).join(" / ")}</p>
+                  <p className="text-xs text-ink-mute">{formatAttrs(line.attributes)}</p>
                   <div className="mt-1 flex items-center gap-3">
                     <div className="flex items-center border border-line">
                       <button

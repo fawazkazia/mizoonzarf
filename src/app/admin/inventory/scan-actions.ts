@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/admin-auth";
+import { variantAttrs } from "@/lib/inventory/variant-attributes";
 import type { ScanContext } from "@/generated/prisma/client";
 
 /** Variants with no barcode yet, matching a product name or SKU — feeds the "Assign Barcode" flow when a scan comes back not-found. */
@@ -22,8 +23,7 @@ export async function searchVariantsForAssignment(query: string) {
   return variants.map((v) => ({
     id: v.id,
     sku: v.sku,
-    size: v.size,
-    color: v.color,
+    attributes: variantAttrs(v),
     productName: v.product.name,
   }));
 }
@@ -53,8 +53,7 @@ export async function lookupBarcode(code: string, context: ScanContext = "GENERA
       sku: variant.sku,
       barcode: variant.barcode,
       barcodeType: variant.barcodeType,
-      size: variant.size,
-      color: variant.color,
+      attributes: variantAttrs(variant),
       price: Number(variant.price),
       salePrice: variant.salePrice ? Number(variant.salePrice) : null,
       stock: variant.stock,

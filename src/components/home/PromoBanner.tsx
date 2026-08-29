@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Img } from "@/components/ui/ArtImage";
+import { objectPositionClass, type ObjectPositionValue } from "@/lib/object-position";
 import { cn } from "@/lib/utils";
 import type { BannerTextSize } from "./Hero";
 
@@ -25,6 +26,7 @@ export function PromoBanner({
   contentPositionY,
   imageUrl,
   mobileImageUrl,
+  imageObjectPosition,
   ctaText,
   ctaLink,
 }: {
@@ -39,14 +41,15 @@ export function PromoBanner({
   contentPositionY?: number | null;
   imageUrl: string;
   mobileImageUrl?: string | null;
+  imageObjectPosition?: ObjectPositionValue | null;
   ctaText: string | null;
   ctaLink: string | null;
 }) {
   const customPos = contentPositionX != null && contentPositionY != null;
   return (
     <section className="relative h-[60vh] min-h-[420px] w-full overflow-hidden bg-ink">
-      <Img src={mobileImageUrl || imageUrl} alt={title} className="lg:hidden" />
-      <Img src={imageUrl} alt={title} className="hidden lg:block" />
+      <Img src={mobileImageUrl || imageUrl} alt={title} className={cn("lg:hidden", objectPositionClass(imageObjectPosition))} />
+      <Img src={imageUrl} alt={title} className={cn("hidden lg:block", objectPositionClass(imageObjectPosition))} />
       <div className="absolute inset-0 bg-gradient-to-t from-ink/60 via-transparent to-transparent lg:bg-gradient-to-r lg:from-ink/10 lg:via-transparent" />
 
       <div

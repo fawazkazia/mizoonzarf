@@ -8,12 +8,11 @@ import { Modal } from "@/components/ui/Modal";
 import { Rating } from "@/components/ui/Rating";
 import { PurchasePanel } from "@/components/product/PurchasePanel";
 import { useQuickViewStore } from "@/stores/quick-view-store";
+import type { VariantAttr } from "@/lib/inventory/variant-attributes";
 
 interface QuickViewVariant {
   id: string;
-  size: string | null;
-  color: string | null;
-  colorHex: string | null;
+  attributes: VariantAttr[];
   price: number;
   salePrice: number | null;
   stock: number;
@@ -27,6 +26,7 @@ interface QuickViewData {
   rating: number;
   reviewCount: number;
   images: { url: string; altText: string | null }[];
+  axisOrder: string[];
   variants: QuickViewVariant[];
 }
 
@@ -122,6 +122,7 @@ export function QuickViewModal() {
               productName={data.name}
               productSlug={data.slug}
               variants={data.variants}
+              axisOrder={data.axisOrder}
               compact
             />
             <Link href={`/product/${data.slug}`} onClick={close} className="link-reveal self-start text-xs uppercase tracking-[0.12em]">

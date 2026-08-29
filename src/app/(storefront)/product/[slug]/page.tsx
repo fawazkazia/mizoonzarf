@@ -7,6 +7,7 @@ import { getRelatedProducts } from "@/lib/data/products";
 import { getSettings } from "@/lib/settings";
 import { formatINR } from "@/lib/currency";
 import { getFeaturedCoupon } from "@/lib/coupons";
+import { variantAttrs } from "@/lib/inventory/variant-attributes";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Container } from "@/components/ui/Container";
@@ -119,11 +120,10 @@ export default async function ProductPage({ params }: PageProps) {
             productName={product.name}
             productSlug={product.slug}
             sizeGuideType={product.sizeGuideType}
+            axisOrder={product.variantAttributes.map((a) => a.name)}
             variants={product.variants.map((v) => ({
               id: v.id,
-              size: v.size,
-              color: v.color,
-              colorHex: v.colorHex,
+              attributes: variantAttrs(v),
               price: Number(v.price),
               salePrice: v.salePrice ? Number(v.salePrice) : null,
               stock: v.stock,

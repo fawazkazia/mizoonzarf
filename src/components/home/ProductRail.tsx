@@ -5,6 +5,7 @@ import { ScrollRail } from "@/components/ui/ScrollRail";
 import { FadeIn } from "@/components/ui/FadeIn";
 import { ProductCard } from "@/components/product/ProductCard";
 import type { ProductCard as ProductCardData } from "@/lib/data/products";
+import { cn } from "@/lib/utils";
 
 export function ProductRail({
   title,
@@ -13,6 +14,8 @@ export function ProductRail({
   products,
   viewAllHref,
   surface = "paper",
+  compactTop = false,
+  compactBottom = false,
 }: {
   title: string;
   subtitle?: string;
@@ -20,17 +23,25 @@ export function ProductRail({
   products: ProductCardData[];
   viewAllHref?: string;
   surface?: "paper" | "paper-dim";
+  compactTop?: boolean;
+  compactBottom?: boolean;
 }) {
   if (products.length === 0) return null;
 
   return (
-    <section className={surface === "paper-dim" ? "bg-paper-dim py-12 sm:py-16" : "py-12 sm:py-16"}>
+    <section
+      className={cn(
+        compactTop ? "pt-4 sm:pt-6" : "pt-12 sm:pt-16",
+        compactBottom ? "pb-4 sm:pb-6" : "pb-12 sm:pb-16",
+        surface === "paper-dim" && "bg-paper-dim"
+      )}
+    >
       <Container>
         <FadeIn className="mb-8 flex items-end justify-between">
           <div>
             {eyebrow && <p className="mb-1.5 text-xs uppercase tracking-[0.2em] text-gold-deep">{eyebrow}</p>}
-            <h2 className="font-display text-2xl sm:text-3xl">{title}</h2>
-            {subtitle && <p className="mt-1.5 text-sm text-ink-soft">{subtitle}</p>}
+            <h2 className="hp-heading font-display text-2xl sm:text-3xl">{title}</h2>
+            {subtitle && <p className="hp-body mt-1.5 text-sm text-ink-soft">{subtitle}</p>}
           </div>
           {viewAllHref && (
             <Link href={viewAllHref} className="link-reveal hidden items-center gap-1.5 text-xs uppercase tracking-[0.12em] sm:flex">

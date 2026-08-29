@@ -11,6 +11,7 @@ function normalize(input: CategoryInput) {
     slug: input.slug,
     description: input.description || null,
     imageUrl: input.imageUrl || null,
+    imageObjectPosition: input.imageObjectPosition || null,
     gender: input.gender || null,
     parentId: input.parentId || null,
     sortOrder: input.sortOrder,

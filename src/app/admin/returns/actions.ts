@@ -7,6 +7,7 @@ import { notify } from "@/lib/notifications/registry";
 import { createNotification } from "@/lib/notifications/inapp";
 import { updateOrderStatus } from "../orders/actions";
 import { applyStockMovement, getDefaultWarehouseId } from "@/lib/inventory/stock";
+import { variantAttrs } from "@/lib/inventory/variant-attributes";
 import type { ReturnStatus, ReturnResolution } from "@/generated/prisma/client";
 
 const INVENTORY_ROLES = ["SUPER_ADMIN", "INVENTORY_MANAGER"] as const;
@@ -36,7 +37,7 @@ export async function scanReturnItem(barcode: string) {
   });
 
   return {
-    variant: { id: variant.id, sku: variant.sku, size: variant.size, color: variant.color, productName: variant.product.name },
+    variant: { id: variant.id, sku: variant.sku, attributes: variantAttrs(variant), productName: variant.product.name },
     matches: items.map((item) => ({
       orderItemId: item.id,
       orderId: item.order.id,

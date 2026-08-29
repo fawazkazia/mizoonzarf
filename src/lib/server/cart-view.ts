@@ -2,6 +2,7 @@ import type { CartWithItems } from "@/lib/server/cart";
 import { calculateTotals, type AppliedCoupon } from "@/lib/cart";
 import type { SiteSettings } from "@/lib/settings";
 import { db } from "@/lib/db";
+import { variantAttrs, type VariantAttr } from "@/lib/inventory/variant-attributes";
 
 export interface CartLineView {
   id: string;
@@ -9,8 +10,7 @@ export interface CartLineView {
   productName: string;
   productSlug: string;
   variantId: string;
-  size: string | null;
-  color: string | null;
+  attributes: VariantAttr[];
   price: number;
   salePrice: number | null;
   quantity: number;
@@ -47,8 +47,7 @@ export async function buildCartView(cart: CartWithItems | null, settings: SiteSe
     productName: item.product.name,
     productSlug: item.product.slug,
     variantId: item.variantId,
-    size: item.variant.size,
-    color: item.variant.color,
+    attributes: variantAttrs(item.variant),
     price: Number(item.variant.price),
     salePrice: item.variant.salePrice ? Number(item.variant.salePrice) : null,
     quantity: item.quantity,

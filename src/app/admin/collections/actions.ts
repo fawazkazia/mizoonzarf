@@ -12,6 +12,7 @@ function normalize(input: CollectionInput) {
     slug: input.slug,
     description: input.description || null,
     imageUrl: input.imageUrl || null,
+    imageObjectPosition: input.imageObjectPosition || null,
     isActive: input.isActive,
     sortOrder: input.sortOrder,
     startDate: input.startDate ? new Date(input.startDate) : null,

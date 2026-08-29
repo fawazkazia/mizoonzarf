@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Checkbox, Fieldset } from "@/components/admin/FormField";
 import { SingleImageUploader } from "@/components/admin/ImageUploader";
 import { BannerContentPositionPicker, type ContentPosition } from "@/components/admin/BannerContentPositionPicker";
+import { ObjectPositionSelect } from "@/components/admin/ObjectPositionSelect";
 import { createBanner, updateBanner } from "./actions";
 import type { BannerInput } from "@/lib/validation/admin-banner";
+import type { ObjectPositionValue } from "@/lib/object-position";
 
 /** Matches how each position actually renders on the storefront (Hero,
  * PromoBanner, CategoryHero) so the recommendation isn't a guess. */
@@ -23,9 +25,14 @@ const BANNER_DIMENSIONS: Record<BannerInput["position"], { desktop: string; mobi
  * image, so only those positions offer the drag-to-position picker. */
 const POSITIONS_WITH_CONTENT_PICKER: BannerInput["position"][] = ["HERO", "PROMO"];
 
+function parseDims(dims: string): { width: number; height: number } {
+  const [width, height] = dims.replace("px", "").split("×").map((n) => parseInt(n.trim(), 10));
+  return { width, height };
+}
+
 function dimsToAspectRatio(dims: string) {
-  const [w, h] = dims.replace("px", "").split("×").map((n) => parseInt(n.trim(), 10));
-  return `${w} / ${h}`;
+  const { width, height } = parseDims(dims);
+  return `${width} / ${height}`;
 }
 
 export interface BannerFormInitial {
@@ -39,6 +46,7 @@ export interface BannerFormInitial {
   contentPositionY: number | null;
   imageUrl: string;
   mobileImageUrl: string | null;
+  imageObjectPosition: ObjectPositionValue | null;
   ctaText: string;
   ctaLink: string;
   position: BannerInput["position"];
@@ -62,6 +70,7 @@ export function BannerForm({ initial }: { initial?: BannerFormInitial }) {
   );
   const [imageUrl, setImageUrl] = useState<string | null>(initial?.imageUrl ?? null);
   const [mobileImageUrl, setMobileImageUrl] = useState<string | null>(initial?.mobileImageUrl ?? null);
+  const [imageObjectPosition, setImageObjectPosition] = useState<ObjectPositionValue | null>(initial?.imageObjectPosition ?? null);
   const [ctaText, setCtaText] = useState(initial?.ctaText ?? "");
   const [ctaLink, setCtaLink] = useState(initial?.ctaLink ?? "");
   const [position, setPosition] = useState<BannerInput["position"]>(initial?.position ?? "HERO");
@@ -87,6 +96,7 @@ export function BannerForm({ initial }: { initial?: BannerFormInitial }) {
       contentPositionY: contentPosition?.y ?? null,
       imageUrl,
       mobileImageUrl,
+      imageObjectPosition,
       ctaText: ctaText || undefined,
       ctaLink: ctaLink || undefined,
       position,
@@ -197,7 +207,7 @@ export function BannerForm({ initial }: { initial?: BannerFormInitial }) {
       <Fieldset title="Images">
         <div>
           <Field label="Desktop Image" hint={`Recommended size: ${BANNER_DIMENSIONS[position].desktop}`}>
-            <SingleImageUploader value={imageUrl} onChange={setImageUrl} />
+            <SingleImageUploader value={imageUrl} onChange={setImageUrl} expectedDimensions={parseDims(BANNER_DIMENSIONS[position].desktop)} />
           </Field>
         </div>
         <div>
@@ -205,8 +215,11 @@ export function BannerForm({ initial }: { initial?: BannerFormInitial }) {
             label="Mobile Image (optional)"
             hint={`Falls back to the desktop image when empty. Recommended size: ${BANNER_DIMENSIONS[position].mobile}`}
           >
-            <SingleImageUploader value={mobileImageUrl} onChange={setMobileImageUrl} />
+            <SingleImageUploader value={mobileImageUrl} onChange={setMobileImageUrl} expectedDimensions={parseDims(BANNER_DIMENSIONS[position].mobile)} />
           </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <ObjectPositionSelect value={imageObjectPosition} onChange={setImageObjectPosition} />
         </div>
       </Fieldset>
 

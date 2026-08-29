@@ -9,6 +9,7 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { useCartStore } from "@/stores/cart-store";
 import { useSettings } from "@/components/SettingsContext";
 import { formatINR } from "@/lib/currency";
+import { formatAttrs } from "@/lib/inventory/variant-attributes";
 
 export function CartPageClient() {
   const cart = useCartStore();
@@ -50,7 +51,7 @@ export function CartPageClient() {
                     <Link href={`/product/${line.productSlug}`} className="font-medium hover:underline">
                       {line.productName}
                     </Link>
-                    <p className="mt-1 text-sm text-ink-soft">{[line.size, line.color].filter(Boolean).join(" / ")}</p>
+                    <p className="mt-1 text-sm text-ink-soft">{formatAttrs(line.attributes)}</p>
                   </div>
                   <button onClick={() => cart.removeItem(line.id)} aria-label="Remove item" className="text-ink-soft hover:text-ink">
                     <X size={18} />

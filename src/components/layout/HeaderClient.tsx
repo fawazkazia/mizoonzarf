@@ -59,12 +59,20 @@ export function HeaderClient({ menu, isSignedIn }: { menu: NavItem[]; isSignedIn
           >
             <span className="flex items-center gap-2.5">
               {settings.branding.logoUrl && (
-                <Img
-                  src={settings.branding.logoUrl}
-                  alt={settings.brandName}
-                  priority
-                  className="h-10 w-auto object-contain sm:h-11 lg:h-12"
-                />
+                <>
+                  <Img
+                    src={settings.branding.mobileLogoUrl || settings.branding.logoUrl}
+                    alt={settings.brandName}
+                    priority
+                    className="h-10 w-auto object-contain sm:h-11 lg:hidden"
+                  />
+                  <Img
+                    src={settings.branding.logoUrl}
+                    alt={settings.brandName}
+                    priority
+                    className="hidden h-12 w-auto object-contain lg:block"
+                  />
+                </>
               )}
               <span className="font-[family-name:var(--font-display)] text-xl font-normal uppercase leading-none tracking-[0.24em] sm:text-2xl">
                 {settings.brandName}

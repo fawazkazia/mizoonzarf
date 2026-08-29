@@ -49,10 +49,10 @@ export default async function InventoryDashboardPage() {
         <StatCard label="Duplicate Attempts" value={String(duplicateAttempts)} />
       </div>
 
-      <div className="grid min-w-0 gap-6 lg:grid-cols-2">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[3fr_2fr]">
         <div className="min-w-0">
           <h2 className="mb-3 font-display text-lg">Recently Scanned</h2>
-          <Table>
+          <Table compact>
             <thead>
               <tr>
                 <Th>Barcode</Th>
@@ -79,7 +79,7 @@ export default async function InventoryDashboardPage() {
 
         <div className="min-w-0">
           <h2 className="mb-3 font-display text-lg">Print History</h2>
-          <Table>
+          <Table compact>
             <thead>
               <tr>
                 <Th>Labels</Th>

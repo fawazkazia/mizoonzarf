@@ -4,6 +4,7 @@ import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { PromoCodeBanner } from "@/components/home/PromoCodeBanner";
 import { FavouriteBrandsStrip } from "@/components/home/FavouriteBrandsStrip";
+import { HeaderRunningBanner } from "@/components/home/HeaderRunningBanner";
 import { ShoppingAssistant } from "@/components/ai/ShoppingAssistant";
 
 export function StorefrontChrome({ children }: { children: React.ReactNode }) {
@@ -11,7 +12,7 @@ export function StorefrontChrome({ children }: { children: React.ReactNode }) {
     <div className="pb-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom))] lg:pb-0">
       <Header />
       <PromoCodeBanner />
-      <div className="h-4 w-full bg-white sm:h-5" aria-hidden="true" />
+      <HeaderRunningBanner />
       <FavouriteBrandsStrip />
       <main>{children}</main>
       <Footer />

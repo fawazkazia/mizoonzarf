@@ -28,6 +28,7 @@ export default async function EditCollectionPage({ params }: PageProps) {
           slug: collection.slug,
           description: collection.description ?? "",
           imageUrl: collection.imageUrl,
+          imageObjectPosition: collection.imageObjectPosition,
           isActive: collection.isActive,
           sortOrder: collection.sortOrder,
           startDate: collection.startDate ? collection.startDate.toISOString().slice(0, 10) : "",

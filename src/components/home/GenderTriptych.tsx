@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { Img } from "@/components/ui/ArtImage";
+import { objectPositionClass, type ObjectPositionValue } from "@/lib/object-position";
 
 export interface TriptychCategory {
   name: string;
   slug: string;
   imageUrl: string | null;
+  imageObjectPosition?: ObjectPositionValue | null;
   children: { name: string; slug: string }[];
 }
 
@@ -22,7 +24,7 @@ export function GenderTriptych({ categories }: { categories: TriptychCategory[] 
       <div className="grid grid-cols-1 sm:grid-cols-3 sm:divide-x sm:divide-line/20">
         {categories.map((cat) => (
           <div key={cat.slug} className="img-zoom group relative h-56 overflow-hidden sm:h-64 lg:h-72">
-            <Img src={cat.imageUrl} alt={cat.name} seedFallback={cat.slug} className="object-top" />
+            <Img src={cat.imageUrl} alt={cat.name} seedFallback={cat.slug} className={objectPositionClass(cat.imageObjectPosition, "object-top")} />
             <div className="absolute inset-0 bg-gradient-to-t from-ink/75 via-ink/10 to-transparent" />
             <Link href={`/${cat.slug}`} className="absolute inset-0" aria-label={`Shop ${cat.name}`} />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4 text-paper">

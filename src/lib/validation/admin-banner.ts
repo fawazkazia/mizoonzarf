@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { objectPositionSchema } from "@/lib/object-position";
 
 export const bannerInputSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -10,6 +11,7 @@ export const bannerInputSchema = z.object({
   contentPositionY: z.number().min(0).max(100).optional().nullable(),
   imageUrl: z.string().min(1, "Image is required"),
   mobileImageUrl: z.string().optional().nullable(),
+  imageObjectPosition: objectPositionSchema,
   ctaText: z.string().optional(),
   ctaLink: z.string().optional(),
   position: z.enum(["HERO", "PROMO", "CATEGORY", "POPUP"]),

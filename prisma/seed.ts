@@ -1,15 +1,17 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { PrismaClient, type Gender, type BannerPosition, type PromotionType, type DiscountType } from "../src/generated/prisma/client";
+import { PrismaClient, type Gender, type BannerPosition, type PromotionType, type DiscountType, type Prisma } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { deriveMirrorFields, type VariantAttr } from "../src/lib/inventory/variant-attributes";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const db = new PrismaClient({ adapter });
 
-function art(seed: string, kind: string, label?: string, caption?: string) {
+function art(seed: string, kind: string, label?: string, caption?: string, format?: "png") {
   const params = new URLSearchParams({ seed, kind });
   if (label) params.set("label", label);
   if (caption) params.set("caption", caption);
+  if (format) params.set("format", format);
   return `/api/art?${params.toString()}`;
 }
 
@@ -55,12 +57,23 @@ function slugify(s: string) {
 const BRANDS = ["Aurelia House", "Maison Noir", "Velure", "Solstice", "Casa Bloom", "Étoile"];
 
 interface VariantSpec {
-  size?: string;
-  color?: string;
-  colorHex?: string;
+  attributes: VariantAttr[];
   price: number;
   salePrice?: number;
   stock: number;
+}
+
+interface AttributeDefSpec {
+  name: string;
+  isColor?: boolean;
+  values: { value: string; hex?: string }[];
+}
+
+interface CustomVariantSpec {
+  attributes: VariantAttr[];
+  price?: number;
+  salePrice?: number;
+  stock?: number;
 }
 
 interface ProductSpec {
@@ -75,6 +88,12 @@ interface ProductSpec {
   sizes?: string[];
   colors?: { name: string; hex: string }[];
   saleSizes?: string[];
+  /** Explicit variant list, bypassing the sizes×colors cartesian helper below — for fixtures
+   * exercising attributes beyond Size/Colour, or asymmetric (non-cartesian) combinations. */
+  customVariants?: CustomVariantSpec[];
+  /** Attribute definitions to pair with customVariants. Ignored (auto-derived from sizes/colors
+   * instead) when customVariants is unset. */
+  variantAttributeDefs?: AttributeDefSpec[];
   material?: string;
   fitInfo?: string;
   careInstructions?: string;
@@ -87,6 +106,15 @@ interface ProductSpec {
 }
 
 function buildVariants(spec: ProductSpec, skuBase: string): VariantSpec[] {
+  if (spec.customVariants) {
+    return spec.customVariants.map((cv) => ({
+      attributes: cv.attributes,
+      price: cv.price ?? spec.price,
+      salePrice: cv.salePrice,
+      stock: cv.stock ?? 5 + Math.floor((skuBase.length * 7) % 20),
+    }));
+  }
+
   const sizes = spec.sizes?.length ? spec.sizes : [undefined];
   const colors = spec.colors?.length ? spec.colors : [undefined];
   const variants: VariantSpec[] = [];
@@ -94,10 +122,11 @@ function buildVariants(spec: ProductSpec, skuBase: string): VariantSpec[] {
   for (const size of sizes) {
     for (const color of colors) {
       const onSale = spec.saleSizes?.includes(size ?? "");
+      const attributes: VariantAttr[] = [];
+      if (size) attributes.push({ name: "Size", value: size });
+      if (color) attributes.push({ name: "Colour", value: color.name, hex: color.hex });
       variants.push({
-        size,
-        color: color?.name,
-        colorHex: color?.hex,
+        attributes,
         price: spec.price,
         salePrice: onSale ? Math.round(spec.price * 0.7 * 100) / 100 : undefined,
         stock: 5 + Math.floor((skuBase.length * 7) % 20),
@@ -105,6 +134,16 @@ function buildVariants(spec: ProductSpec, skuBase: string): VariantSpec[] {
     }
   }
   return variants;
+}
+
+/** Product-level attribute definitions to pair with buildVariants — auto-derived from
+ * sizes/colors for the common case, or taken verbatim for customVariants fixtures. */
+function buildAttributeDefs(spec: ProductSpec): AttributeDefSpec[] {
+  if (spec.variantAttributeDefs) return spec.variantAttributeDefs;
+  const defs: AttributeDefSpec[] = [];
+  if (spec.sizes?.length) defs.push({ name: "Size", values: spec.sizes.map((value) => ({ value })) });
+  if (spec.colors?.length) defs.push({ name: "Colour", isColor: true, values: spec.colors.map((c) => ({ value: c.name, hex: c.hex })) });
+  return defs;
 }
 
 const PRODUCTS: ProductSpec[] = [
@@ -255,6 +294,92 @@ const PRODUCTS: ProductSpec[] = [
     colors: [{ name: "Black/Brown", hex: "#3a2b22" }],
     material: "Full-Grain Leather",
     careInstructions: "Wipe clean with a soft cloth.",
+  },
+  // ---- Multi-attribute variant fixtures (Shoe Size×Width, Waist×Length, Pack Size, no-variant) ----
+  {
+    name: "Leather Derby Shoe",
+    categorySlug: "mens-accessories",
+    brand: "Étoile",
+    gender: "MEN",
+    price: 8999,
+    description: "A hand-finished leather derby shoe with a durable rubber sole, built for everyday wear.",
+    shortDescription: "Hand-finished leather derby shoe.",
+    tags: ["office", "classic"],
+    material: "Full-Grain Leather",
+    careInstructions: "Wipe clean, use a shoe tree to retain shape.",
+    variantAttributeDefs: [
+      { name: "Shoe Size", values: [{ value: "8" }, { value: "9" }, { value: "10" }, { value: "11" }] },
+      { name: "Width", values: [{ value: "Regular" }, { value: "Wide" }] },
+    ],
+    // Asymmetric on purpose: not every size comes in both widths, exercising the "S only comes
+    // in Black/White" style case the admin UI's stale-row detection and disabled-combo PDP UX
+    // are built for — Width here plays the role Colour plays in the apparel fixtures.
+    customVariants: [
+      { attributes: [{ name: "Shoe Size", value: "8" }, { name: "Width", value: "Regular" }], stock: 6 },
+      { attributes: [{ name: "Shoe Size", value: "9" }, { name: "Width", value: "Regular" }], stock: 10 },
+      { attributes: [{ name: "Shoe Size", value: "9" }, { name: "Width", value: "Wide" }], stock: 4 },
+      { attributes: [{ name: "Shoe Size", value: "10" }, { name: "Width", value: "Regular" }], stock: 8 },
+      { attributes: [{ name: "Shoe Size", value: "10" }, { name: "Width", value: "Wide" }], stock: 3 },
+      { attributes: [{ name: "Shoe Size", value: "11" }, { name: "Width", value: "Wide" }], stock: 5 },
+    ],
+  },
+  {
+    name: "Relaxed Straight Jeans",
+    categorySlug: "mens-jeans",
+    brand: "Velure",
+    gender: "MEN",
+    price: 6499,
+    description: "Relaxed straight-leg jeans in rigid cotton denim, available in a curated set of waist and length combinations.",
+    shortDescription: "Relaxed straight-leg rigid denim jeans.",
+    tags: ["casual", "classic"],
+    material: "100% Cotton Denim",
+    fitInfo: "Relaxed straight fit.",
+    careInstructions: "Wash sparingly, cold water.",
+    sizeGuideType: "apparel",
+    variantAttributeDefs: [
+      { name: "Waist", values: [{ value: "30" }, { value: "32" }, { value: "34" }] },
+      { name: "Length/Inseam", values: [{ value: "30" }, { value: "32" }, { value: "34" }] },
+      { name: "Colour", isColor: true, values: [{ value: "Black", hex: "#1c1b19" }, { value: "Blue", hex: "#2c3648" }] },
+    ],
+    // Non-cartesian: only the waist/length pairings that are actually stocked, each in one colour.
+    customVariants: [
+      { attributes: [{ name: "Waist", value: "30" }, { name: "Length/Inseam", value: "30" }, { name: "Colour", value: "Black", hex: "#1c1b19" }] },
+      { attributes: [{ name: "Waist", value: "32" }, { name: "Length/Inseam", value: "30" }, { name: "Colour", value: "Black", hex: "#1c1b19" }] },
+      { attributes: [{ name: "Waist", value: "32" }, { name: "Length/Inseam", value: "32" }, { name: "Colour", value: "Blue", hex: "#2c3648" }] },
+      { attributes: [{ name: "Waist", value: "34" }, { name: "Length/Inseam", value: "32" }, { name: "Colour", value: "Blue", hex: "#2c3648" }] },
+      { attributes: [{ name: "Waist", value: "34" }, { name: "Length/Inseam", value: "34" }, { name: "Colour", value: "Blue", hex: "#2c3648" }] },
+    ],
+  },
+  {
+    name: "Cotton Crew Socks (3-Pack)",
+    categorySlug: "mens-accessories",
+    brand: "Solstice",
+    gender: "MEN",
+    price: 1299,
+    description: "Breathable combed cotton crew socks with reinforced heel and toe, sold in packs.",
+    shortDescription: "Combed cotton crew socks, sold in packs.",
+    tags: ["casual"],
+    material: "80% Cotton, 15% Polyester, 5% Elastane",
+    careInstructions: "Machine wash cold.",
+    variantAttributeDefs: [{ name: "Pack Size", values: [{ value: "3 Pair" }, { value: "6 Pair" }] }],
+    customVariants: [
+      { attributes: [{ name: "Pack Size", value: "3 Pair" }], price: 1299, stock: 20 },
+      { attributes: [{ name: "Pack Size", value: "6 Pair" }], price: 2299, stock: 12 },
+    ],
+  },
+  {
+    name: "Silk Pocket Square",
+    categorySlug: "mens-accessories",
+    brand: "Étoile",
+    gender: "MEN",
+    price: 1499,
+    description: "A single-size silk pocket square, finished with hand-rolled edges — no variants needed.",
+    shortDescription: "Hand-rolled silk pocket square.",
+    tags: ["office", "wedding"],
+    material: "100% Silk",
+    careInstructions: "Dry clean only.",
+    // No attributes at all — exercises the "no variants" single-default-variant case.
+    customVariants: [{ attributes: [], stock: 15 }],
   },
   {
     name: "Merino Wool Crew Sweater",
@@ -1022,7 +1147,7 @@ async function main() {
   console.log("Creating brands...");
   const brandIdByName = new Map<string, string>();
   for (const name of BRANDS) {
-    const brand = await db.brand.create({ data: { name, slug: slugify(name), logoUrl: art(name, "square", name) } });
+    const brand = await db.brand.create({ data: { name, slug: slugify(name), logoUrl: art(name, "square", name, undefined, "png") } });
     brandIdByName.set(name, brand.id);
   }
 
@@ -1044,6 +1169,7 @@ async function main() {
     const slug = slugify(spec.name);
     const sku = `SKU-${slug.toUpperCase().slice(0, 10)}-${Math.floor(1000 + Math.random() * 9000)}`;
     const variants = buildVariants(spec, slug);
+    const attributeDefs = buildAttributeDefs(spec);
 
     await db.product.create({
       data: {
@@ -1077,13 +1203,20 @@ async function main() {
         variants: {
           create: variants.map((v, i) => ({
             sku: `${sku}-${i}`,
-            size: v.size,
-            color: v.color,
-            colorHex: v.colorHex,
+            attributeValues: v.attributes as unknown as Prisma.InputJsonValue,
+            ...deriveMirrorFields(v.attributes),
             price: v.price,
             salePrice: v.salePrice,
             stock: v.stock,
             isDefault: i === 0,
+          })),
+        },
+        variantAttributes: {
+          create: attributeDefs.map((d, i) => ({
+            name: d.name,
+            isColor: d.isColor ?? false,
+            position: i,
+            values: d.values as unknown as Prisma.InputJsonValue,
           })),
         },
       },

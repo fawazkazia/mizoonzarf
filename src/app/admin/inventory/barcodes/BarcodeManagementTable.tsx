@@ -16,8 +16,7 @@ interface Row {
   productName: string;
   productStatus: ProductStatus;
   sku: string;
-  size: string | null;
-  color: string | null;
+  variantLabel: string;
   barcode: string | null;
   barcodeType: BarcodeType | null;
   barcodeSource: BarcodeSource | null;
@@ -127,7 +126,7 @@ export function BarcodeManagementTable({ variants }: { variants: Row[] }) {
                   {row.productName}
                 </Link>
               </Td>
-              <Td>{[row.size, row.color].filter(Boolean).join(" / ") || "Default"}</Td>
+              <Td>{row.variantLabel || "Default"}</Td>
               <Td className="text-xs">{row.sku}</Td>
               <Td className="font-mono text-xs">{row.barcode ?? <span className="text-sale">Missing</span>}</Td>
               <Td className="text-xs">{row.barcodeType ?? "—"}</Td>

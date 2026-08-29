@@ -28,6 +28,7 @@ export default async function EditBannerPage({ params }: PageProps) {
           contentPositionY: banner.contentPositionY,
           imageUrl: banner.imageUrl,
           mobileImageUrl: banner.mobileImageUrl,
+          imageObjectPosition: banner.imageObjectPosition,
           ctaText: banner.ctaText ?? "",
           ctaLink: banner.ctaLink ?? "",
           position: banner.position,

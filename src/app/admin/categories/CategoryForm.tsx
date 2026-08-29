@@ -6,8 +6,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea, Checkbox, Fieldset } from "@/components/admin/FormField";
 import { SingleImageUploader } from "@/components/admin/ImageUploader";
+import { ObjectPositionSelect } from "@/components/admin/ObjectPositionSelect";
+import { dimensionHint } from "@/lib/image-dimensions";
 import { createCategory, updateCategory } from "./actions";
 import type { CategoryInput } from "@/lib/validation/admin-category";
+import type { ObjectPositionValue } from "@/lib/object-position";
 
 function slugify(s: string) {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -19,6 +22,7 @@ export interface CategoryFormInitial {
   slug: string;
   description: string;
   imageUrl: string | null;
+  imageObjectPosition: ObjectPositionValue | null;
   gender: string;
   parentId: string;
   sortOrder: number;
@@ -41,6 +45,7 @@ export function CategoryForm({
   const [slugTouched, setSlugTouched] = useState(Boolean(initial));
   const [description, setDescription] = useState(initial?.description ?? "");
   const [imageUrl, setImageUrl] = useState<string | null>(initial?.imageUrl ?? null);
+  const [imageObjectPosition, setImageObjectPosition] = useState<ObjectPositionValue | null>(initial?.imageObjectPosition ?? null);
   const [gender, setGender] = useState(initial?.gender ?? "");
   const [parentId, setParentId] = useState(initial?.parentId ?? "");
   const [sortOrder, setSortOrder] = useState(initial?.sortOrder ?? 0);
@@ -57,6 +62,7 @@ export function CategoryForm({
       slug,
       description: description || undefined,
       imageUrl,
+      imageObjectPosition,
       gender: (gender || "") as CategoryInput["gender"],
       parentId: parentId || null,
       sortOrder,
@@ -142,7 +148,15 @@ export function CategoryForm({
 
       <Fieldset title="Image">
         <div className="sm:col-span-2">
-          <SingleImageUploader value={imageUrl} onChange={setImageUrl} />
+          <Field
+            label="Category Image"
+            hint={`Used across the homepage (Shop Men/Women/Kids, Shop By Category) and category pages. ${dimensionHint("genderTriptychTile")}`}
+          >
+            <SingleImageUploader value={imageUrl} onChange={setImageUrl} />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <ObjectPositionSelect value={imageObjectPosition} onChange={setImageObjectPosition} />
         </div>
       </Fieldset>
 

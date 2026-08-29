@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProductBySlug } from "@/lib/data/product-detail";
+import { variantAttrs } from "@/lib/inventory/variant-attributes";
 
 /**
  * Single-product read backing the Quick View modal — a thin wrapper over
@@ -27,11 +28,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       categorySlug: product.category.slug,
       sizeGuideType: product.sizeGuideType,
       images: product.images.map((img) => ({ url: img.url, altText: img.altText })),
+      axisOrder: product.variantAttributes.map((a) => a.name),
       variants: product.variants.map((v) => ({
         id: v.id,
-        size: v.size,
-        color: v.color,
-        colorHex: v.colorHex,
+        attributes: variantAttrs(v),
         price: Number(v.price),
         salePrice: v.salePrice ? Number(v.salePrice) : null,
         stock: v.stock,

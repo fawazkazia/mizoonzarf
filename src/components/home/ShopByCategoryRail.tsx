@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { Container } from "@/components/ui/Container";
 import { Img } from "@/components/ui/ArtImage";
+import { objectPositionClass, type ObjectPositionValue } from "@/lib/object-position";
+import { cn } from "@/lib/utils";
 
 export interface CategoryRailItem {
   name: string;
   href: string;
   imageUrl: string | null;
+  imageObjectPosition?: ObjectPositionValue | null;
   seed: string;
 }
 
@@ -23,16 +26,18 @@ export interface CategoryRailItem {
 export function ShopByCategoryRail({
   items,
   accentGradient,
+  heading = "Shop By Category",
 }: {
   items: CategoryRailItem[];
   accentGradient: { from: string; via: string; to: string };
+  heading?: string;
 }) {
   if (items.length === 0) return null;
 
   return (
     <section className="py-8 sm:py-10">
       <Container>
-        <h2 className="font-display text-xl sm:text-2xl">Shop By Category</h2>
+        <h2 className="hp-heading font-display text-xl sm:text-2xl">{heading}</h2>
         <div className="no-scrollbar mt-4 grid auto-cols-[6rem] grid-flow-col grid-rows-2 gap-x-3 gap-y-3 overflow-x-auto pb-2 sm:auto-cols-[7rem]">
           {items.map((item, i) => (
             <Link key={`${item.href}-${i}`} href={item.href} className="group block">
@@ -42,7 +47,10 @@ export function ShopByCategoryRail({
                     src={item.imageUrl}
                     alt={item.name}
                     seedFallback={item.seed}
-                    className="transition-transform duration-[var(--dur-3)] group-hover:scale-105"
+                    className={cn(
+                      "transition-transform duration-[var(--dur-3)] group-hover:scale-105",
+                      objectPositionClass(item.imageObjectPosition)
+                    )}
                   />
                 </div>
                 <div

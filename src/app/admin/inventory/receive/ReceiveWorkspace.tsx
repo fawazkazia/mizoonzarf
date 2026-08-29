@@ -7,6 +7,7 @@ import { Field, Input, Select } from "@/components/admin/FormField";
 import { Button } from "@/components/ui/Button";
 import { lookupBarcode } from "../scan-actions";
 import { receiveStock } from "../stock-actions";
+import { formatAttrs } from "@/lib/inventory/variant-attributes";
 
 type LookupResult = Awaited<ReturnType<typeof lookupBarcode>>;
 
@@ -60,7 +61,7 @@ export function ReceiveWorkspace({ warehouses }: { warehouses: { id: string; nam
         <div className="border border-line p-5">
           <h2 className="font-display text-lg">{result.product.name}</h2>
           <p className="text-sm text-ink-soft">
-            {[result.variant.size, result.variant.color].filter(Boolean).join(" / ") || "Default"} · SKU {result.variant.sku}
+            {formatAttrs(result.variant.attributes) || "Default"} · SKU {result.variant.sku}
           </p>
           <p className="mt-2 text-sm">
             Current stock: <span className="font-medium">{result.variant.stock}</span>

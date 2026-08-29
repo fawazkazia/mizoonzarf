@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { variantAttrs, formatAttrs } from "@/lib/inventory/variant-attributes";
 
 const ABANDONED_AFTER_MS = 60 * 60 * 1000;
 
@@ -18,7 +19,7 @@ export async function getAbandonedCarts() {
       items: {
         include: {
           product: { select: { name: true, slug: true } },
-          variant: { select: { size: true, color: true, price: true, salePrice: true, imageUrl: true } },
+          variant: { select: { attributeValues: true, size: true, color: true, colorHex: true, price: true, salePrice: true, imageUrl: true } },
         },
       },
     },
@@ -41,7 +42,7 @@ export async function getAbandonedCarts() {
       items: cart.items.map((item) => ({
         productName: item.product.name,
         productSlug: item.product.slug,
-        variantLabel: [item.variant.size, item.variant.color].filter(Boolean).join(" / "),
+        variantLabel: formatAttrs(variantAttrs(item.variant)),
         imageUrl: item.variant.imageUrl,
         quantity: item.quantity,
       })),

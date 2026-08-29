@@ -81,6 +81,7 @@ export const settingsInputSchema = z.object({
   }),
   branding: z.object({
     logoUrl: z.string().optional().nullable(),
+    mobileLogoUrl: z.string().optional().nullable(),
     faviconUrl: z.string().optional().nullable(),
   }),
   codRisk: z.object({

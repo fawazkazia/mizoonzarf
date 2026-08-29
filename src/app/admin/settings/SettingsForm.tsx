@@ -63,6 +63,7 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
   const [countryLabel, setCountryLabel] = useState(initial.header.countryLabel);
   const [countryCode, setCountryCode] = useState(initial.header.countryCode);
   const [logoUrl, setLogoUrl] = useState<string | null>(initial.branding.logoUrl || null);
+  const [mobileLogoUrl, setMobileLogoUrl] = useState<string | null>(initial.branding.mobileLogoUrl || null);
   const [faviconUrl, setFaviconUrl] = useState<string | null>(initial.branding.faviconUrl || null);
   const [currencyDisplayEnabled, setCurrencyDisplayEnabled] = useState(initial.currencyDisplay.enabled);
   const [currencyOptions, setCurrencyOptions] = useState<CurrencyOption[]>(initial.currencyDisplay.options);
@@ -129,7 +130,7 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
         countryLabel,
         countryCode,
       },
-      branding: { logoUrl, faviconUrl },
+      branding: { logoUrl, mobileLogoUrl, faviconUrl },
       codRisk: { maxCodOrderValue, maxCodOrdersPerCustomer, highValueCodThreshold, allowHighRiskCod, requireConfirmOnHighRiskCod },
       currencyDisplay: { enabled: currencyDisplayEnabled, options: currencyOptions },
       promoStrips: {
@@ -176,6 +177,11 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
         <div>
           <Field label="Logo">
             <SingleImageUploader value={logoUrl} onChange={setLogoUrl} />
+          </Field>
+        </div>
+        <div>
+          <Field label="Mobile Logo (optional)" hint="Falls back to the main logo when empty.">
+            <SingleImageUploader value={mobileLogoUrl} onChange={setMobileLogoUrl} />
           </Field>
         </div>
         <div>

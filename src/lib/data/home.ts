@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { toProductCard, cardInclude, type ProductCard } from "@/lib/data/products";
+import type { ObjectPosition } from "@/generated/prisma/client";
 
 export async function getHeroSlides() {
   const now = new Date();
@@ -55,6 +56,10 @@ export async function getFeaturedCollections(limit = 3) {
   return db.collection.findMany({ where: { isActive: true }, orderBy: { sortOrder: "asc" }, take: limit });
 }
 
+export async function getFeaturedBrands(limit = 5) {
+  return db.brand.findMany({ orderBy: { name: "asc" }, take: limit });
+}
+
 /** Returns every HomepageSection row, visible or not — the page (via
  * resolveHomepageSections/visibleSectionKeys in lib/home-sections.ts)
  * decides what's visible, so "no row for this key" and "row explicitly
@@ -64,7 +69,13 @@ export async function getHomepageSections() {
 }
 
 export interface VerticalFeatureResult {
-  category: { name: string; slug: string; description: string | null; imageUrl: string | null };
+  category: {
+    name: string;
+    slug: string;
+    description: string | null;
+    imageUrl: string | null;
+    imageObjectPosition: ObjectPosition | null;
+  };
   products: ProductCard[];
 }
 
@@ -88,7 +99,13 @@ export async function getVerticalFeature(slug: string, limit = 4): Promise<Verti
   });
 
   return {
-    category: { name: category.name, slug: category.slug, description: category.description, imageUrl: category.imageUrl },
+    category: {
+      name: category.name,
+      slug: category.slug,
+      description: category.description,
+      imageUrl: category.imageUrl,
+      imageObjectPosition: category.imageObjectPosition,
+    },
     products: products.map(toProductCard),
   };
 }

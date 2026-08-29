@@ -5,6 +5,7 @@ import { SearchInput } from "@/components/admin/SearchInput";
 import { StatusFilterSelect } from "@/components/admin/StatusFilterSelect";
 import { Pagination } from "@/components/admin/Pagination";
 import { BarcodeManagementTable } from "./BarcodeManagementTable";
+import { formatVariantLabel } from "@/lib/inventory/variant-attributes";
 
 export const metadata = { title: "Barcode Management" };
 
@@ -58,8 +59,7 @@ export default async function BarcodeManagementPage({ searchParams }: PageProps)
           productName: v.product.name,
           productStatus: v.product.status,
           sku: v.sku,
-          size: v.size,
-          color: v.color,
+          variantLabel: formatVariantLabel(v),
           barcode: v.barcode,
           barcodeType: v.barcodeType,
           barcodeSource: v.barcodeSource,

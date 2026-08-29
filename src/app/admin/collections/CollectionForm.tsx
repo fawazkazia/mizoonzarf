@@ -6,8 +6,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Textarea, Checkbox, Fieldset } from "@/components/admin/FormField";
 import { SingleImageUploader } from "@/components/admin/ImageUploader";
+import { ObjectPositionSelect } from "@/components/admin/ObjectPositionSelect";
+import { dimensionHint } from "@/lib/image-dimensions";
 import { createCollection, updateCollection } from "./actions";
 import type { CollectionInput } from "@/lib/validation/admin-collection";
+import type { ObjectPositionValue } from "@/lib/object-position";
 
 function slugify(s: string) {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -19,6 +22,7 @@ export interface CollectionFormInitial {
   slug: string;
   description: string;
   imageUrl: string | null;
+  imageObjectPosition: ObjectPositionValue | null;
   isActive: boolean;
   sortOrder: number;
   startDate: string;
@@ -39,6 +43,7 @@ export function CollectionForm({
   const [slugTouched, setSlugTouched] = useState(Boolean(initial));
   const [description, setDescription] = useState(initial?.description ?? "");
   const [imageUrl, setImageUrl] = useState<string | null>(initial?.imageUrl ?? null);
+  const [imageObjectPosition, setImageObjectPosition] = useState<ObjectPositionValue | null>(initial?.imageObjectPosition ?? null);
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
   const [sortOrder, setSortOrder] = useState(initial?.sortOrder ?? 0);
   const [startDate, setStartDate] = useState(initial?.startDate ?? "");
@@ -63,6 +68,7 @@ export function CollectionForm({
       slug,
       description: description || undefined,
       imageUrl,
+      imageObjectPosition,
       isActive,
       sortOrder,
       startDate: startDate || undefined,
@@ -132,7 +138,16 @@ export function CollectionForm({
 
       <Fieldset title="Image">
         <div className="sm:col-span-2">
-          <SingleImageUploader value={imageUrl} onChange={setImageUrl} />
+          <Field label="Collection Image" hint={dimensionHint("featuredCollectionTile")}>
+            <SingleImageUploader
+              value={imageUrl}
+              onChange={setImageUrl}
+              expectedDimensions={{ width: 1000, height: 450 }}
+            />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <ObjectPositionSelect value={imageObjectPosition} onChange={setImageObjectPosition} />
         </div>
       </Fieldset>
 

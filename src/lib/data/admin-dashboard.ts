@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getAbandonedCarts } from "./abandoned-carts";
+import { formatVariantLabel } from "@/lib/inventory/variant-attributes";
 
 export async function getDashboardStats() {
   const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
@@ -14,9 +15,20 @@ export async function getDashboardStats() {
       db.order.findMany({ orderBy: { createdAt: "desc" }, take: 8, select: { id: true, orderNumber: true, total: true, status: true, paymentStatus: true, paymentMethod: true, createdAt: true, guestEmail: true, user: { select: { name: true, email: true } } } }),
       db.order.groupBy({ by: ["status"], _count: true }),
       db.$queryRaw<
-        { id: string; sku: string; stock: number; lowStockThreshold: number; size: string | null; color: string | null; productName: string; productSlug: string }[]
+        {
+          id: string;
+          sku: string;
+          stock: number;
+          lowStockThreshold: number;
+          size: string | null;
+          color: string | null;
+          colorHex: string | null;
+          attributeValues: unknown;
+          productName: string;
+          productSlug: string;
+        }[]
       >`
-        SELECT pv.id, pv.sku, pv.stock, pv."lowStockThreshold", pv.size, pv.color, p.name as "productName", p.slug as "productSlug"
+        SELECT pv.id, pv.sku, pv.stock, pv."lowStockThreshold", pv.size, pv.color, pv."colorHex", pv."attributeValues", p.name as "productName", p.slug as "productSlug"
         FROM "product_variants" pv
         JOIN "products" p ON p.id = pv."productId"
         WHERE pv.stock <= pv."lowStockThreshold"
@@ -73,7 +85,7 @@ export async function getDashboardStats() {
       threshold: v.lowStockThreshold,
       productName: v.productName,
       productSlug: v.productSlug,
-      label: [v.size, v.color].filter(Boolean).join(" / "),
+      label: formatVariantLabel(v),
     })),
   };
 }
