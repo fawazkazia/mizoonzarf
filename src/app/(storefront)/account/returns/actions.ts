@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { notify } from "@/lib/notifications/registry";
+import { sendOrderEmail } from "@/lib/notifications/order-email";
 import { returnRequestSchema, type ReturnRequestInput } from "@/lib/validation/return";
 
 export async function requestReturn(raw: ReturnRequestInput) {
@@ -30,18 +30,13 @@ export async function requestReturn(raw: ReturnRequestInput) {
     },
   });
 
-  if (session.user.email) {
-    try {
-      await notify({
-        channel: "EMAIL",
-        to: session.user.email,
-        templateKey: "return_requested",
-        variables: { order_number: orderItem.order.orderNumber },
-      });
-    } catch (err) {
-      console.error("[requestReturn] notify failed", err);
-    }
-  }
+  await sendOrderEmail({
+    orderId: orderItem.orderId,
+    userId: session.user.id,
+    to: session.user.email,
+    templateKey: "return_requested",
+    variables: { order_number: orderItem.order.orderNumber },
+  });
 
   revalidatePath("/account/returns");
   revalidatePath(`/account/orders/${orderItem.orderId}`);

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireStaff } from "@/lib/admin-auth";
 import { createNotification } from "@/lib/notifications/inapp";
+import { sendOrderEmail } from "@/lib/notifications/order-email";
 import { getPaymentProvider } from "@/lib/payments/registry";
 import { markOrderFailed, markOrderPaid } from "@/lib/orders/payment-events";
 import { applyOrderStatus } from "@/lib/orders/status";
@@ -18,20 +19,33 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus, no
 export async function updateShipment(orderId: string, data: { carrier?: string; trackingNumber?: string; estimatedDelivery?: string }) {
   await requireStaff();
 
-  await db.shipment.upsert({
-    where: { orderId },
-    update: {
-      carrier: data.carrier || null,
-      trackingNumber: data.trackingNumber || null,
-      estimatedDelivery: data.estimatedDelivery ? new Date(data.estimatedDelivery) : null,
-    },
-    create: {
-      orderId,
-      carrier: data.carrier || null,
-      trackingNumber: data.trackingNumber || null,
-      estimatedDelivery: data.estimatedDelivery ? new Date(data.estimatedDelivery) : null,
-    },
-  });
+  const existing = await db.shipment.findUnique({ where: { orderId } });
+  const next = {
+    carrier: data.carrier || null,
+    trackingNumber: data.trackingNumber || null,
+    estimatedDelivery: data.estimatedDelivery ? new Date(data.estimatedDelivery) : null,
+  };
+
+  await db.shipment.upsert({ where: { orderId }, update: next, create: { orderId, ...next } });
+
+  // Only email when tracking info was actually added or changed — not on every unrelated shipment edit.
+  const trackingChanged =
+    Boolean(next.trackingNumber) &&
+    (next.trackingNumber !== existing?.trackingNumber || next.carrier !== existing?.carrier || next.estimatedDelivery?.getTime() !== existing?.estimatedDelivery?.getTime());
+
+  if (trackingChanged) {
+    const order = await db.order.findUnique({ where: { id: orderId } });
+    if (order) {
+      const contactEmail = order.guestEmail ?? (order.userId ? (await db.user.findUnique({ where: { id: order.userId }, select: { email: true } }))?.email : null);
+      await sendOrderEmail({
+        orderId,
+        userId: order.userId,
+        to: contactEmail,
+        templateKey: "tracking_updated",
+        variables: { order_number: order.orderNumber },
+      });
+    }
+  }
 
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/account/orders");

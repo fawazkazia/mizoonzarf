@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireStaff, requireRole } from "@/lib/admin-auth";
-import { notify } from "@/lib/notifications/registry";
+import { sendOrderEmail } from "@/lib/notifications/order-email";
 import { createNotification } from "@/lib/notifications/inapp";
 import { updateOrderStatus } from "../orders/actions";
 import { applyStockMovement, getDefaultWarehouseId } from "@/lib/inventory/stock";
@@ -11,6 +11,15 @@ import { variantAttrs } from "@/lib/inventory/variant-attributes";
 import type { ReturnStatus, ReturnResolution } from "@/generated/prisma/client";
 
 const INVENTORY_ROLES = ["SUPER_ADMIN", "INVENTORY_MANAGER"] as const;
+
+/** REFUNDED is handled separately via updateOrderStatus (order_refunded), not here. */
+const RETURN_STATUS_TEMPLATES: Partial<Record<ReturnStatus, string>> = {
+  APPROVED: "return_approved",
+  REJECTED: "return_rejected",
+  PICKUP: "return_pickup",
+  RECEIVED: "return_received",
+  REFUND_PROCESSING: "refund_initiated",
+};
 
 /** Scans a barcode to find open returns for that variant — the entry point for the warehouse "Scan Return" workflow. */
 export async function scanReturnItem(barcode: string) {
@@ -169,17 +178,15 @@ export async function updateReturnStatus(
       ? (await db.user.findUnique({ where: { id: existing.order.userId }, select: { email: true } }))?.email
       : existing.order.guestEmail;
 
-    if (contactEmail && status === "RECEIVED") {
-      try {
-        await notify({
-          channel: "EMAIL",
-          to: contactEmail,
-          templateKey: "return_received",
-          variables: { order_number: existing.order.orderNumber },
-        });
-      } catch (err) {
-        console.error("[updateReturnStatus] notify failed", err);
-      }
+    const templateKey = RETURN_STATUS_TEMPLATES[status];
+    if (templateKey) {
+      await sendOrderEmail({
+        orderId: existing.orderId,
+        userId: existing.order.userId,
+        to: contactEmail,
+        templateKey,
+        variables: { order_number: existing.order.orderNumber },
+      });
     }
 
     if (existing.order.userId) {

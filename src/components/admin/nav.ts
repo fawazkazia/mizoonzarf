@@ -15,6 +15,7 @@ import {
   RotateCcw,
   Warehouse,
   Truck,
+  Mail,
 } from "lucide-react";
 
 export const ADMIN_NAV = [
@@ -31,6 +32,7 @@ export const ADMIN_NAV = [
   { href: "/admin/customers", label: "Customers", icon: Users, exact: false },
   { href: "/admin/reviews", label: "Reviews", icon: Star, exact: false },
   { href: "/admin/promotions", label: "Promotions", icon: Tag, exact: false },
+  { href: "/admin/notifications", label: "Email Notifications", icon: Mail, exact: false },
   { href: "/admin/banners", label: "Banners", icon: ImageIcon, exact: false },
   { href: "/admin/homepage", label: "Homepage", icon: LayoutTemplate, exact: false },
   { href: "/admin/settings", label: "Settings", icon: Settings, exact: false },

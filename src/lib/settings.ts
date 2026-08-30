@@ -114,6 +114,19 @@ export interface SiteSettings {
       lineHeight: "tight" | "normal" | "relaxed";
     };
   };
+  /**
+   * Admin-editable branding for transactional emails (order confirmation, status
+   * updates, tracking). `fromEmailOverride` only takes effect if it's on a domain
+   * verified with the email provider (Resend) — otherwise sends fall back to
+   * RESEND_FROM_EMAIL. Logo/support email/phone/address come from `branding`/
+   * `header`/`supportEmail`/`footer` above and aren't duplicated here.
+   */
+  email: {
+    senderName: string;
+    fromEmailOverride: string;
+    replyToEmail: string;
+    footerNote: string;
+  };
   /** Admin-configurable COD availability + fraud-risk gating — enforced server-side in /api/checkout. */
   codRisk: {
     /** COD is refused above this order total regardless of risk level. */
@@ -215,6 +228,12 @@ const DEFAULT_SETTINGS: SiteSettings = {
       { code: "AED", symbol: "AED", rate: 0.044, country: "AE", countryLabel: "United Arab Emirates" },
     ],
   },
+  email: {
+    senderName: "MIZOON ZARF",
+    fromEmailOverride: "",
+    replyToEmail: "",
+    footerNote: "",
+  },
   codRisk: {
     maxCodOrderValue: 15000,
     maxCodOrdersPerCustomer: 10,
@@ -268,6 +287,7 @@ export const getSettings = cache(async (): Promise<SiteSettings> => {
     header: { ...DEFAULT_SETTINGS.header, ...(overrides.header as object) },
     branding: { ...DEFAULT_SETTINGS.branding, ...(overrides.branding as object) },
     currencyDisplay: { ...DEFAULT_SETTINGS.currencyDisplay, ...(overrides.currencyDisplay as object) },
+    email: { ...DEFAULT_SETTINGS.email, ...(overrides.email as object) },
     codRisk: { ...DEFAULT_SETTINGS.codRisk, ...(overrides.codRisk as object) },
     homepageTheme: {
       colors: { ...DEFAULT_SETTINGS.homepageTheme.colors, ...((overrides.homepageTheme as { colors?: object })?.colors ?? {}) },

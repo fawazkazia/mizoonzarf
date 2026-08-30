@@ -236,6 +236,7 @@ model User {
   barcodeDuplicateAttempts BarcodeDuplicateAttempt[]
   phoneOtps                PhoneOtp[]
   verifiedPhones           VerifiedPhone[]
+  emailLogs                EmailLog[]
 
   @@map("users")
 }
@@ -680,6 +681,7 @@ model Order {
   shipment            Shipment?
   returns             Return[]
   loyaltyTransactions LoyaltyTransaction[]
+  emailLogs           EmailLog[]
 
   @@index([userId])
   @@index([status])
@@ -1172,4 +1174,38 @@ model NotificationTemplate {
 
   @@unique([key, channel])
   @@map("notification_templates")
+}
+
+enum EmailStatus {
+  SENT
+  FAILED
+}
+
+/// One row per branded transactional email actually attempted (order/return/tracking
+/// events + admin test sends) — powers the admin "Email Notifications" history/retry UI.
+/// Stores the fully-rendered subject/HTML so a retry can resend byte-for-byte without
+/// re-deriving order state that may have since changed.
+model EmailLog {
+  id                String      @id @default(cuid())
+  orderId           String?
+  userId            String?
+  toEmail           String
+  notificationType  String
+  subject           String
+  htmlBody          String      @db.Text
+  status            EmailStatus
+  errorMessage      String?     @db.Text
+  providerMessageId String?
+  isTest            Boolean     @default(false)
+  retryCount        Int         @default(0)
+  lastRetriedAt     DateTime?
+  createdAt         DateTime    @default(now())
+
+  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  user  User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("email_logs")
 }

@@ -7,6 +7,7 @@ import { calculateTotals, generateOrderNumber, type AppliedCoupon } from "@/lib/
 import { checkoutSchema } from "@/lib/validation/checkout";
 import { getPaymentProvider } from "@/lib/payments/registry";
 import { notify, ORDER_EVENT_TEMPLATES } from "@/lib/notifications/registry";
+import { sendOrderEmail } from "@/lib/notifications/order-email";
 import { markOrderFailed } from "@/lib/orders/payment-events";
 import { maybeAutoCreateShipment } from "@/lib/shipping/orchestrator";
 import { resolveCheckoutPhoneVerification } from "@/lib/otp/checkout-verification";
@@ -257,8 +258,14 @@ export async function POST(req: NextRequest) {
   }
 
   const notifyVariables = { customer_name: input.address.fullName, order_number: order.orderNumber, order_total: totals.total };
+  await sendOrderEmail({
+    orderId: order.id,
+    userId: session?.user?.id ?? null,
+    to: session?.user?.email ?? input.email,
+    templateKey: ORDER_EVENT_TEMPLATES.ORDER_PLACED,
+    variables: notifyVariables,
+  });
   for (const notification of [
-    { channel: "EMAIL" as const, to: session?.user?.email ?? input.email },
     { channel: "WHATSAPP" as const, to: input.phone },
     { channel: "SMS" as const, to: input.phone },
   ]) {

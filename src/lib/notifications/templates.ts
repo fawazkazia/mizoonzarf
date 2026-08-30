@@ -48,11 +48,29 @@ const DEFAULT_TEMPLATES: Record<string, Partial<Record<"EMAIL" | "SMS", Rendered
     EMAIL: { subject: "Order {{order_number}} refunded", body: "Your payment for order {{order_number}} ({{order_total}}) has been refunded." },
     SMS: { body: "Order {{order_number}} has been refunded." },
   },
+  payment_failed: {
+    EMAIL: { subject: "Payment failed for order {{order_number}}", body: "Hi {{customer_name}}, we couldn't process payment for order {{order_number}}. The order has been cancelled — no amount has been charged. Please try again or contact us if you need help." },
+  },
   return_requested: {
-    EMAIL: { subject: "Return requested for order {{order_number}}", body: "We've received your return request for order {{order_number}}." },
+    EMAIL: { subject: "Return requested for order {{order_number}}", body: "We've received your return request for order {{order_number}}. We'll review it and get back to you shortly." },
+  },
+  return_approved: {
+    EMAIL: { subject: "Return approved for order {{order_number}}", body: "Good news — your return request for order {{order_number}} has been approved. Please keep the item ready for pickup." },
+  },
+  return_rejected: {
+    EMAIL: { subject: "Update on your return for order {{order_number}}", body: "Your return request for order {{order_number}} could not be approved. Contact us if you have questions." },
+  },
+  return_pickup: {
+    EMAIL: { subject: "Your return for order {{order_number}} has been picked up", body: "The returned item(s) from order {{order_number}} have been picked up from you and are on their way to our warehouse." },
   },
   return_received: {
-    EMAIL: { subject: "Return received for order {{order_number}}", body: "We've received your return for order {{order_number}}." },
+    EMAIL: { subject: "Return received for order {{order_number}}", body: "We've received your return for order {{order_number}} at our warehouse and are inspecting it." },
+  },
+  refund_initiated: {
+    EMAIL: { subject: "Refund initiated for order {{order_number}}", body: "We've initiated your refund for order {{order_number}}. It should reflect in your original payment method within 5-7 business days." },
+  },
+  tracking_updated: {
+    EMAIL: { subject: "Tracking details for order {{order_number}}", body: "Your order {{order_number}} has shipped with {{courier_name}}. Tracking number: {{tracking_number}}." },
   },
   cart_abandoned: {
     EMAIL: { subject: "You left something in your cart", body: "Hi {{customer_name}}, you still have {{item_count}} item(s) waiting in your cart. Complete your order before they sell out." },
@@ -68,7 +86,12 @@ const DEFAULT_TEMPLATES: Record<string, Partial<Record<"EMAIL" | "SMS", Rendered
   },
 };
 
-function interpolate(text: string, variables: Record<string, string | number>): string {
+/** Raw (un-interpolated) default subject/body for a key/channel — used to pre-fill the admin template editor when no DB override exists yet. */
+export function getDefaultTemplate(key: string, channel: "EMAIL" | "SMS"): RenderedTemplate | undefined {
+  return DEFAULT_TEMPLATES[key]?.[channel];
+}
+
+export function interpolate(text: string, variables: Record<string, string | number>): string {
   return text.replace(/\{\{(\w+)\}\}/g, (match, key) => (key in variables ? String(variables[key]) : match));
 }
 

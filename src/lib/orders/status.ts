@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { notify, ORDER_EVENT_TEMPLATES } from "@/lib/notifications/registry";
+import { sendOrderEmail } from "@/lib/notifications/order-email";
 import { createNotification } from "@/lib/notifications/inapp";
 import { estimatePointsEarned, reverseLoyaltyPoints } from "@/lib/loyalty";
 import { recomputeUserReliability } from "@/lib/risk/recomputeReliability";
@@ -37,6 +38,8 @@ export function getOrderStatusDisplay(
 export async function applyOrderStatus(orderId: string, status: OrderStatus, note?: string): Promise<void> {
   const order = await db.order.findUnique({ where: { id: orderId } });
   if (!order) throw new Error("Order not found.");
+  // No real transition (e.g. admin re-saves the same status) — skip history/loyalty/notifications entirely so it can't double-send.
+  if (order.status === status) return;
 
   await db.$transaction(async (tx) => {
     await tx.order.update({ where: { id: orderId }, data: { status } });
@@ -76,8 +79,8 @@ export async function applyOrderStatus(orderId: string, status: OrderStatus, not
   const variables = { order_number: order.orderNumber, order_total: Number(order.total) };
 
   if (templateKey) {
+    await sendOrderEmail({ orderId, userId: order.userId, to: contactEmail, templateKey, variables });
     for (const notification of [
-      { channel: "EMAIL" as const, to: contactEmail },
       { channel: "SMS" as const, to: contactPhone },
       { channel: "WHATSAPP" as const, to: contactPhone },
     ]) {

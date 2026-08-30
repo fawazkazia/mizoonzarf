@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { notify, ORDER_EVENT_TEMPLATES } from "@/lib/notifications/registry";
+import { sendOrderEmail } from "@/lib/notifications/order-email";
 import { generateInvoiceNumber } from "@/lib/orders/invoicing";
 import { maybeAutoCreateShipment } from "@/lib/shipping/orchestrator";
 
@@ -72,7 +73,7 @@ export async function markOrderPaid(orderId: string, transactionRef: string, raw
   const { email, phone } = await resolveContacts(orderId);
   const variables = { order_number: order.orderNumber, order_total: Number(order.total) };
 
-  await notifySafely({ channel: "EMAIL", to: email, templateKey: ORDER_EVENT_TEMPLATES.PAYMENT_CONFIRMED, variables });
+  await sendOrderEmail({ orderId, userId: order.userId, to: email, templateKey: ORDER_EVENT_TEMPLATES.PAYMENT_CONFIRMED, variables });
   await notifySafely({ channel: "WHATSAPP", to: phone, templateKey: ORDER_EVENT_TEMPLATES.PAYMENT_CONFIRMED, variables });
 
   await maybeAutoCreateShipment(orderId);
@@ -106,5 +107,7 @@ export async function markOrderFailed(orderId: string, reason: string): Promise<
   const { email } = await resolveContacts(orderId);
   const variables = { order_number: order.orderNumber, order_total: Number(order.total) };
 
-  await notifySafely({ channel: "EMAIL", to: email, templateKey: ORDER_EVENT_TEMPLATES.CANCELLED, variables });
+  // Distinct from an admin-initiated CANCELLED (order_cancelled, sent via applyOrderStatus) —
+  // this is specifically a failed payment attempt, so customers get an accurate explanation.
+  await sendOrderEmail({ orderId, userId: order.userId, to: email, templateKey: "payment_failed", variables });
 }
