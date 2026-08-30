@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { Field, Input } from "@/components/admin/FormField";
+import { Field, Input, Select } from "@/components/admin/FormField";
 import { SingleImageUploader } from "@/components/admin/ImageUploader";
 import { ObjectPositionSelect } from "@/components/admin/ObjectPositionSelect";
 import { dimensionHint } from "@/lib/image-dimensions";
@@ -14,10 +14,20 @@ import {
   type SocialGalleryConfig,
   type NewsletterConfig,
   type ShopByCategoryRailConfig,
+  type CategoryShowcaseConfig,
+  type TrustFeaturesConfig,
+  type TrustFeatureIcon,
   type FeaturedCollectionsConfig,
   type StyleFinderConfig,
   type AdBannerConfig,
 } from "@/lib/validation/homepage-section-config";
+
+const TRUST_FEATURE_ICON_OPTIONS: { value: TrustFeatureIcon; label: string }[] = [
+  { value: "authentic", label: "Shield (Authentic)" },
+  { value: "secure", label: "Lock (Secure Payments)" },
+  { value: "delivery", label: "Truck (Fast Delivery)" },
+  { value: "returns", label: "Return Arrow (Easy Returns)" },
+];
 
 const PRODUCT_RAIL_KEYS = new Set(["newArrivals", "trending", "bestSellers", "recommendedProducts"]);
 const VERTICAL_FEATURE_KEYS = new Set(["perfumeFeature", "jewelleryFeature", "mensFeature", "womensFeature", "kidsFeature"]);
@@ -38,6 +48,12 @@ export function SectionConfigEditor({
 }) {
   if (sectionKey === "shopByCategoryRail") {
     return <ShopByCategoryRailEditor config={resolveSectionConfig(sectionKey, config)} onChange={onChange} />;
+  }
+  if (sectionKey === "categoryShowcase") {
+    return <CategoryShowcaseEditor config={resolveSectionConfig(sectionKey, config)} onChange={onChange} />;
+  }
+  if (sectionKey === "trustFeatures") {
+    return <TrustFeaturesEditor config={resolveSectionConfig(sectionKey, config)} onChange={onChange} />;
   }
   if (sectionKey === "featuredCollections") {
     return <FeaturedCollectionsEditor config={resolveSectionConfig(sectionKey, config)} onChange={onChange} />;
@@ -75,6 +91,65 @@ function ShopByCategoryRailEditor({ config, onChange }: { config: ShopByCategory
         }}
       />
     </Field>
+  );
+}
+
+function CategoryShowcaseEditor({ config, onChange }: { config: CategoryShowcaseConfig; onChange: (c: Record<string, unknown>) => void }) {
+  const [heading, setHeading] = useState(config.heading);
+  return (
+    <Field label="Heading">
+      <Input
+        value={heading}
+        onChange={(e) => {
+          setHeading(e.target.value);
+          onChange({ heading: e.target.value });
+        }}
+      />
+    </Field>
+  );
+}
+
+function TrustFeaturesEditor({ config, onChange }: { config: TrustFeaturesConfig; onChange: (c: Record<string, unknown>) => void }) {
+  const [heading, setHeading] = useState(config.heading);
+  const [items, setItems] = useState(config.items);
+
+  function emit(next: { heading?: string; items?: typeof items }) {
+    onChange({ heading, items, ...next });
+  }
+
+  function updateItem(i: number, patch: Partial<(typeof items)[number]>) {
+    const next = items.map((item, idx) => (idx === i ? { ...item, ...patch } : item)) as typeof items;
+    setItems(next);
+    emit({ items: next });
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Field label="Heading">
+        <Input
+          value={heading}
+          onChange={(e) => {
+            setHeading(e.target.value);
+            emit({ heading: e.target.value });
+          }}
+        />
+      </Field>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {items.map((item, i) => (
+          <div key={i} className="flex flex-col gap-2 border border-line p-3">
+            <Select value={item.icon} onChange={(e) => updateItem(i, { icon: e.target.value as TrustFeatureIcon })}>
+              {TRUST_FEATURE_ICON_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </Select>
+            <Input placeholder="Title" value={item.title} onChange={(e) => updateItem(i, { title: e.target.value })} />
+            <Input placeholder="Text" value={item.text} onChange={(e) => updateItem(i, { text: e.target.value })} />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

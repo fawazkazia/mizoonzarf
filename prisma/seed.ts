@@ -1336,23 +1336,52 @@ async function main() {
   console.log("Creating homepage sections...");
   const sections = [
     "hero",
-    "categoryGrid",
+    "categoryShowcase",
     "newArrivals",
-    "flashSale",
     "promoBanner",
-    "trending",
-    "styleFinder",
-    "bestSellers",
     "featuredCollections",
-    "socialGallery",
+    "bestSellers",
+    "adBanner",
+    "trustFeatures",
     "newsletter",
   ];
   for (const [i, key] of sections.entries()) {
     await db.homepageSection.create({ data: { key, sortOrder: i, isVisible: true } });
   }
 
+  // A key absent from HomepageSection entirely falls back to visible=true
+  // (see resolveHomepageSections in src/lib/home-sections.ts) — so every
+  // legacy/optional section not in the curated list above must get an
+  // explicit hidden row, or a fresh install would render all of them again.
+  // Not deleted from the code/catalog — an admin can still re-enable any of
+  // these from /admin/homepage.
+  const hiddenSections = [
+    "shopByCategoryRail",
+    "genderTriptych",
+    "imageRunningBanner",
+    "trending",
+    "mensFeature",
+    "womensFeature",
+    "kidsFeature",
+    "perfumeFeature",
+    "jewelleryFeature",
+    "runningBanner",
+    "adBanner2",
+    "brandStripTop",
+    "brandStripBottom",
+    "recommendedProducts",
+    "styleFinder",
+    "flashSale",
+    // Its default images (/images/banners/social-*.jpg) aren't real files —
+    // keep it hidden until an admin uploads real photos.
+    "socialGallery",
+  ];
+  for (const [i, key] of hiddenSections.entries()) {
+    await db.homepageSection.create({ data: { key, sortOrder: sections.length + i, isVisible: false } });
+  }
+
   console.log("Creating settings...");
-  await db.setting.create({ data: { key: "brandName", value: "Maison Luxe", group: "brand" } });
+  await db.setting.create({ data: { key: "brandName", value: "MIZOON ZARF", group: "brand" } });
   await db.setting.create({ data: { key: "whatsappNumber", value: "919501234567", group: "general" } });
   await db.setting.create({ data: { key: "supportEmail", value: "info@mizoonzarf.in", group: "general" } });
 
@@ -1383,7 +1412,7 @@ async function main() {
   }
 
   console.log("Creating admin user...");
-  const adminEmail = "admin@maisonluxe.in";
+  const adminEmail = "admin@mizoonzarf.in";
   const adminPassword = "Admin@12345";
   await db.user.upsert({
     where: { email: adminEmail },

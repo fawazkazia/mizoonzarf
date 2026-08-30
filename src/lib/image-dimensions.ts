@@ -20,6 +20,12 @@ const HOMEPAGE_IMAGE_DIMENSIONS_RAW = {
     usage: "Both",
     note: "Square tile, ~7rem in the scroll rail.",
   },
+  categoryShowcaseTile: {
+    label: "Shop By Category card (large, homepage)",
+    desktop: { width: 800, height: 1000 },
+    usage: "Both",
+    note: "Same image as the Shop By Category rail — this is the large 5-card homepage section.",
+  },
   genderTriptychTile: {
     label: "Shop Men / Women / Kids tile",
     desktop: { width: 1280, height: 576 },

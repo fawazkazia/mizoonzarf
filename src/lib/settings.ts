@@ -130,7 +130,7 @@ export interface SiteSettings {
 }
 
 const DEFAULT_SETTINGS: SiteSettings = {
-  brandName: "MAISON LUXE",
+  brandName: "MIZOON ZARF",
   brandTagline: "Fashion for Every Moment",
   currency: "INR",
   currencySymbol: "₹",
@@ -191,7 +191,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
     processingDays: 1,
   },
   footer: {
-    about: "Maison Luxe curates premium fashion, fragrance and jewellery for men, women and children across India.",
+    about: "MIZOON ZARF curates premium fashion, fragrance and jewellery for men, women and children across India.",
     contactAddress: "[PLACEHOLDER — add your registered business address]",
   },
   header: {

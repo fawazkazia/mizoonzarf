@@ -13,6 +13,8 @@ export interface HomepageSectionDef {
  * per-key overrides, not the definition of what a key even means. */
 export const HOMEPAGE_SECTION_DEFS: HomepageSectionDef[] = [
   { key: "hero", label: "Hero Slider" },
+  { key: "categoryShowcase", label: "Shop By Category (Large Cards)" },
+  { key: "trustFeatures", label: "Why MIZOON ZARF (Trust Features)" },
   { key: "shopByCategoryRail", label: "Shop By Category (Scroll Rail)" },
   { key: "genderTriptych", label: "Shop Men | Women | Kids" },
   { key: "imageRunningBanner", label: "Image Running Banner (between Shop Men/Women/Kids & New Arrivals)" },

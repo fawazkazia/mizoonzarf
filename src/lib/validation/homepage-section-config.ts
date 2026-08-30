@@ -18,6 +18,34 @@ export const shopByCategoryRailConfigSchema = z.object({
 });
 export type ShopByCategoryRailConfig = z.infer<typeof shopByCategoryRailConfigSchema>;
 
+export const categoryShowcaseConfigSchema = z.object({
+  heading: z.string().trim().min(1).default("Shop By Category"),
+});
+export type CategoryShowcaseConfig = z.infer<typeof categoryShowcaseConfigSchema>;
+
+export const trustFeatureIconSchema = z.enum(["authentic", "secure", "delivery", "returns"]);
+export type TrustFeatureIcon = z.infer<typeof trustFeatureIconSchema>;
+
+export const trustFeaturesConfigSchema = z.object({
+  heading: z.string().trim().min(1).default("Why MIZOON ZARF"),
+  items: z
+    .array(
+      z.object({
+        icon: trustFeatureIconSchema,
+        title: z.string().trim().min(1),
+        text: z.string().trim().min(1),
+      })
+    )
+    .length(4)
+    .default([
+      { icon: "authentic", title: "100% Authentic", text: "Every piece verified genuine" },
+      { icon: "secure", title: "Secure Payments", text: "Your transactions, fully protected" },
+      { icon: "delivery", title: "Fast Delivery", text: "Quick, reliable shipping nationwide" },
+      { icon: "returns", title: "Easy Returns", text: "Hassle-free returns, no questions asked" },
+    ]),
+});
+export type TrustFeaturesConfig = z.infer<typeof trustFeaturesConfigSchema>;
+
 export const featuredCollectionsConfigSchema = z.object({
   heading: z.string().trim().min(1).default("Featured Collections"),
   ctaText: z.string().trim().min(1).default("Explore the Edit"),
@@ -132,6 +160,8 @@ export const AD_BANNER_DEFAULTS: Record<string, AdBannerConfig> = {
  * content already lives on a dedicated admin page, or is explicitly out of scope. */
 export const homepageSectionConfigSchemas = {
   shopByCategoryRail: shopByCategoryRailConfigSchema,
+  categoryShowcase: categoryShowcaseConfigSchema,
+  trustFeatures: trustFeaturesConfigSchema,
   featuredCollections: featuredCollectionsConfigSchema,
   newArrivals: productRailConfigSchema,
   trending: productRailConfigSchema,

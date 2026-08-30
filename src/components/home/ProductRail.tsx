@@ -16,6 +16,7 @@ export function ProductRail({
   surface = "paper",
   compactTop = false,
   compactBottom = false,
+  layout = "rail",
 }: {
   title: string;
   subtitle?: string;
@@ -25,6 +26,10 @@ export function ProductRail({
   surface?: "paper" | "paper-dim";
   compactTop?: boolean;
   compactBottom?: boolean;
+  /** "grid" renders a static, equal-width 2/4-column grid instead of a
+   * horizontal scroll carousel — used where the spec calls for a fixed
+   * grid (New Arrivals, Best Sellers) rather than a browsable rail. */
+  layout?: "rail" | "grid";
 }) {
   if (products.length === 0) return null;
 
@@ -50,11 +55,19 @@ export function ProductRail({
           )}
         </FadeIn>
 
-        <ScrollRail trackClassName="pb-2">
-          {products.map((p) => (
-            <ProductCard key={p.id} product={p} className="w-44 shrink-0 snap-start sm:w-52 lg:w-60" />
-          ))}
-        </ScrollRail>
+        {layout === "grid" ? (
+          <div className="grid grid-cols-2 gap-x-4 gap-y-10 lg:grid-cols-4">
+            {products.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        ) : (
+          <ScrollRail trackClassName="pb-2">
+            {products.map((p) => (
+              <ProductCard key={p.id} product={p} className="w-44 shrink-0 snap-start sm:w-52 lg:w-60" />
+            ))}
+          </ScrollRail>
+        )}
 
         {viewAllHref && (
           <div className="mt-8 flex justify-center sm:hidden">

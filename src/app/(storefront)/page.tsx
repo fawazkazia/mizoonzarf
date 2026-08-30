@@ -17,6 +17,8 @@ import { homepageThemeStyle } from "@/lib/homepage-theme-style";
 import { Hero } from "@/components/home/Hero";
 import { GenderTriptych } from "@/components/home/GenderTriptych";
 import { ShopByCategoryRail } from "@/components/home/ShopByCategoryRail";
+import { CategoryShowcase } from "@/components/home/CategoryShowcase";
+import { TrustFeatures } from "@/components/home/TrustFeatures";
 import { ProductRail } from "@/components/home/ProductRail";
 import { PromoBanner } from "@/components/home/PromoBanner";
 import { VerticalFeature } from "@/components/home/VerticalFeature";
@@ -90,6 +92,15 @@ export default async function HomePage() {
       children: c.children.map((child) => ({ name: child.name, slug: child.slug })),
     }));
 
+  const CATEGORY_SHOWCASE_ORDER = ["men", "women", "kids", "perfumes", "jewellery"];
+  const categoryShowcaseItems = [...menuCategories]
+    .sort((a, b) => {
+      const ai = CATEGORY_SHOWCASE_ORDER.indexOf(a.slug);
+      const bi = CATEGORY_SHOWCASE_ORDER.indexOf(b.slug);
+      return (ai === -1 ? CATEGORY_SHOWCASE_ORDER.length : ai) - (bi === -1 ? CATEGORY_SHOWCASE_ORDER.length : bi);
+    })
+    .map((c) => ({ name: c.name, slug: c.slug, imageUrl: c.imageUrl, imageObjectPosition: c.imageObjectPosition }));
+
   const categoryRailItems = menuCategories.flatMap((c) =>
     c.children.map((child) => ({
       name: child.name,
@@ -132,10 +143,12 @@ export default async function HomePage() {
       />
     ),
     genderTriptych: <GenderTriptych categories={genderCategories} />,
+    categoryShowcase: <CategoryShowcase items={categoryShowcaseItems} heading={cfg("categoryShowcase").heading} />,
+    trustFeatures: <TrustFeatures items={cfg("trustFeatures").items} heading={cfg("trustFeatures").heading} />,
     imageRunningBanner: (
       <ImageRunningBanner images={newArrivals.map((p) => ({ id: p.id, src: p.image, alt: p.name }))} />
     ),
-    newArrivals: <ProductRail {...cfg("newArrivals")} products={newArrivals} viewAllHref="/men?sort=newest" compactTop compactBottom />,
+    newArrivals: <ProductRail {...cfg("newArrivals")} products={newArrivals} viewAllHref="/men?sort=newest" compactTop compactBottom layout="grid" />,
     trending: <ProductRail {...cfg("trending")} products={trending} viewAllHref="/women" surface="paper-dim" />,
     flashSale: flashSale && (
       <FlashSaleCountdown
@@ -166,7 +179,7 @@ export default async function HomePage() {
     styleFinder: <StyleFinder {...cfg("styleFinder")} />,
     adBanner: <AdBanner {...cfg("adBanner")} />,
     adBanner2: <AdBanner {...cfg("adBanner2")} />,
-    bestSellers: <ProductRail {...cfg("bestSellers")} products={bestSellers} viewAllHref="/men?sort=best_selling" />,
+    bestSellers: <ProductRail {...cfg("bestSellers")} products={bestSellers} viewAllHref="/men?sort=best_selling" layout="grid" />,
     perfumeFeature: perfumeFeature && (
       <VerticalFeature category={perfumeFeature.category} products={perfumeFeature.products} {...cfg("perfumeFeature")} accent="gold" spacing="top" />
     ),

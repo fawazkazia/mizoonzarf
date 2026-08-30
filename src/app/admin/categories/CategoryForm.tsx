@@ -150,7 +150,7 @@ export function CategoryForm({
         <div className="sm:col-span-2">
           <Field
             label="Category Image"
-            hint={`Used across the homepage (Shop Men/Women/Kids, Shop By Category) and category pages. ${dimensionHint("genderTriptychTile")}`}
+            hint={`Used across the homepage (Shop By Category, Shop Men/Women/Kids) and category pages. ${dimensionHint("categoryShowcaseTile")}`}
           >
             <SingleImageUploader value={imageUrl} onChange={setImageUrl} />
           </Field>

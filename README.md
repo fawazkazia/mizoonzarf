@@ -1,4 +1,4 @@
-# Maison Luxe — Premium Fashion E-Commerce
+# MIZOON ZARF — Premium Fashion E-Commerce
 
 A production-grade fashion storefront covering Men's, Women's and Kids' fashion & garments,
 Perfumes, Fashion Jewellery and Accessories — built with Next.js 16 (App Router), TypeScript,
@@ -30,7 +30,7 @@ npm run dev
 
 Open http://localhost:3000. The seed script populates ~50 realistic products across every
 category, hero banners, an active flash sale, two coupons (`WELCOME10`, `SAVE100`), and
-homepage section ordering. It also seeds an admin login — `admin@maisonluxe.in` /
+homepage section ordering. It also seeds an admin login — `admin@mizoonzarf.in` /
 `Admin@12345` — for the role-gated dashboard at `/admin`.
 
 > **Local database:** a real PostgreSQL 17 instance runs in Docker (see
