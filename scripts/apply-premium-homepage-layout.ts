@@ -69,9 +69,16 @@ async function main() {
     })
   );
 
+  // Upsert (not update) — a legacy key with NO existing row would otherwise
+  // silently fall back to isVisible=true (see resolveHomepageSections), so
+  // every hidden key needs an explicit row, not just the ones already present.
   await Promise.all(
-    HIDDEN_KEYS.filter((key) => byKey.has(key)).map((key) =>
-      db.homepageSection.update({ where: { key }, data: { isVisible: false } })
+    HIDDEN_KEYS.map((key, i) =>
+      db.homepageSection.upsert({
+        where: { key },
+        create: { key, isVisible: false, sortOrder: VISIBLE_ORDER.length + 100 + i, title: null, config: null as never },
+        update: { isVisible: false },
+      })
     )
   );
 
@@ -85,6 +92,19 @@ async function main() {
   if (brandNameRow && typeof brandNameRow.value === "string" && /maison\s*luxe/i.test(brandNameRow.value)) {
     await db.setting.update({ where: { key: "brandName" }, data: { value: "MIZOON ZARF" } });
     console.log('Fixed stale brandName setting: "Maison Luxe" -> "MIZOON ZARF"');
+  }
+
+  // The "footer" setting is a JSON object ({ about, contactAddress }) — only
+  // patch the "about" string in place rather than overwrite the whole
+  // object, in case other fields were customized.
+  const footerRow = await db.setting.findUnique({ where: { key: "footer" } });
+  if (footerRow && footerRow.value && typeof footerRow.value === "object" && !Array.isArray(footerRow.value)) {
+    const footer = footerRow.value as Record<string, unknown>;
+    if (typeof footer.about === "string" && /maison\s*luxe/i.test(footer.about)) {
+      const fixedAbout = footer.about.replace(/maison\s*luxe/gi, "MIZOON ZARF");
+      await db.setting.update({ where: { key: "footer" }, data: { value: { ...footer, about: fixedAbout } as never } });
+      console.log('Fixed stale footer.about setting: "Maison Luxe" -> "MIZOON ZARF"');
+    }
   }
 }
 
