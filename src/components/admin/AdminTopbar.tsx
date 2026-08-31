@@ -168,7 +168,7 @@ export function AdminTopbar({ name, role }: { name: string; role: string }) {
         </button>
       </div>
 
-      <AdminMobileNav open={mobileOpen} onClose={() => setMobileOpen(false)} />
+      <AdminMobileNav open={mobileOpen} onClose={() => setMobileOpen(false)} role={role} />
     </header>
   );
 }

@@ -3,9 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireRole, requireStaff } from "@/lib/admin-auth";
+import { OPERATIONS_ROLES } from "@/lib/admin-permissions";
 import { getShippingProvider } from "@/lib/shipping/registry";
-
-const INVENTORY_ROLES = ["SUPER_ADMIN", "INVENTORY_MANAGER"] as const;
 
 export interface WarehousePickupDetails {
   address?: string;
@@ -30,7 +29,7 @@ function revalidateWarehousePaths() {
 }
 
 export async function createWarehouse(data: { name: string; code: string; address?: string }) {
-  await requireRole([...INVENTORY_ROLES]);
+  await requireRole(OPERATIONS_ROLES);
   const code = data.code.trim().toUpperCase();
   const existing = await db.warehouse.findUnique({ where: { code } });
   if (existing) throw new Error(`Warehouse code "${code}" is already in use.`);
@@ -41,7 +40,7 @@ export async function createWarehouse(data: { name: string; code: string; addres
 }
 
 export async function updateWarehouse(id: string, data: { name: string; address?: string; isActive: boolean }) {
-  await requireRole([...INVENTORY_ROLES]);
+  await requireRole(OPERATIONS_ROLES);
   const warehouse = await db.warehouse.update({
     where: { id },
     data: { name: data.name.trim(), address: data.address || null, isActive: data.isActive },
@@ -51,7 +50,7 @@ export async function updateWarehouse(id: string, data: { name: string; address?
 }
 
 export async function deactivateWarehouse(id: string) {
-  await requireRole([...INVENTORY_ROLES]);
+  await requireRole(OPERATIONS_ROLES);
   const warehouse = await db.warehouse.findUniqueOrThrow({ where: { id } });
   if (warehouse.isDefault) throw new Error("Can't deactivate the default warehouse.");
   await db.warehouse.update({ where: { id }, data: { isActive: false } });
@@ -59,7 +58,7 @@ export async function deactivateWarehouse(id: string) {
 }
 
 export async function updateWarehousePickupDetails(id: string, data: WarehousePickupDetails) {
-  await requireRole([...INVENTORY_ROLES]);
+  await requireRole(OPERATIONS_ROLES);
   const warehouse = await db.warehouse.update({
     where: { id },
     data: {
@@ -81,7 +80,7 @@ export async function updateWarehousePickupDetails(id: string, data: WarehousePi
 
 /** Registers this warehouse as a Shiprocket pickup location and stores the returned nickname. */
 export async function registerWarehouseWithShiprocket(id: string) {
-  await requireRole([...INVENTORY_ROLES]);
+  await requireRole(OPERATIONS_ROLES);
   const warehouse = await db.warehouse.findUniqueOrThrow({ where: { id } });
 
   if (!warehouse.address || !warehouse.city || !warehouse.pincode || !warehouse.phone) {

@@ -186,6 +186,7 @@ export async function POST(req: NextRequest) {
             subtotal: Number(item.variant.salePrice ?? item.variant.price) * item.quantity,
             gstRate: lines[i].gstRate,
             hsnCode: item.product.hsnCode,
+            costPriceSnapshot: item.variant.costPrice,
           })),
         },
         statusHistory: { create: { status: "ORDER_PLACED", note: "Order placed by customer." } },

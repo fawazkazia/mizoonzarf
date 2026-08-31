@@ -3,14 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireStaff, requireRole } from "@/lib/admin-auth";
+import { OPERATIONS_ROLES } from "@/lib/admin-permissions";
 import { sendOrderEmail } from "@/lib/notifications/order-email";
 import { createNotification } from "@/lib/notifications/inapp";
-import { updateOrderStatus } from "../orders/actions";
 import { applyStockMovement, getDefaultWarehouseId } from "@/lib/inventory/stock";
 import { variantAttrs } from "@/lib/inventory/variant-attributes";
+import { processRefund } from "@/lib/finance/refunds";
 import type { ReturnStatus, ReturnResolution } from "@/generated/prisma/client";
-
-const INVENTORY_ROLES = ["SUPER_ADMIN", "INVENTORY_MANAGER"] as const;
 
 /** REFUNDED is handled separately via updateOrderStatus (order_refunded), not here. */
 const RETURN_STATUS_TEMPLATES: Partial<Record<ReturnStatus, string>> = {
@@ -70,7 +69,7 @@ export async function scanReturnItem(barcode: string) {
 export async function resolveReturn(
   input: { returnId?: string; orderItemId?: string; resolution: ReturnResolution; warehouseId?: string; refundAmount?: number; adminNote?: string }
 ) {
-  const session = await requireRole([...INVENTORY_ROLES]);
+  const session = await requireRole(OPERATIONS_ROLES);
   if (!input.returnId && !input.orderItemId) throw new Error("Missing return or order item reference.");
 
   let returnRecord = input.returnId
@@ -152,11 +151,32 @@ export async function updateReturnStatus(
   status: ReturnStatus,
   data: { adminNote?: string; refundAmount?: number } = {}
 ) {
-  await requireStaff();
+  const session = await requireStaff();
 
   const existing = await db.return.findUnique({ where: { id: returnId }, include: { order: true } });
   if (!existing) throw new Error("Return not found.");
   if (existing.status === "REFUNDED") throw new Error("This return has already been refunded.");
+
+  // REFUNDED routes through processRefund — the same real reversal (gateway call,
+  // Payment/Order.paymentStatus, loyalty reversal, ledger entry) as an order-level refund.
+  // Previously this branch only wrote Return.status/refundAmount and Order.status, without
+  // ever touching Payment/paymentStatus, leaving a "refunded" return that hadn't actually
+  // reversed any money — processRefund itself now writes the Return row too, so it must run
+  // before the generic update below (which would otherwise stomp its status/refundAmount write).
+  if (status === "REFUNDED") {
+    const amount = data.refundAmount ?? Number(existing.order.total);
+    await processRefund({
+      orderId: existing.orderId,
+      returnId: existing.id,
+      amount,
+      reason: data.adminNote || "Refunded via return workflow.",
+      requestedById: session.user.id,
+    });
+    revalidatePath("/admin/returns");
+    revalidatePath(`/admin/returns/${returnId}`);
+    revalidatePath("/account/returns");
+    return;
+  }
 
   await db.return.update({
     where: { id: returnId },
@@ -167,37 +187,29 @@ export async function updateReturnStatus(
     },
   });
 
-  // REFUNDED is the shared terminal Order.status value that the loyalty engine's
-  // reversal logic already watches for inside updateOrderStatus — route through
-  // that function rather than writing Order.status here, so loyalty reversal,
-  // status history, and customer notification all still fire.
-  if (status === "REFUNDED") {
-    await updateOrderStatus(existing.orderId, "REFUNDED", data.adminNote || "Refunded via return workflow.");
-  } else {
-    const contactEmail = existing.order.userId
-      ? (await db.user.findUnique({ where: { id: existing.order.userId }, select: { email: true } }))?.email
-      : existing.order.guestEmail;
+  const contactEmail = existing.order.userId
+    ? (await db.user.findUnique({ where: { id: existing.order.userId }, select: { email: true } }))?.email
+    : existing.order.guestEmail;
 
-    const templateKey = RETURN_STATUS_TEMPLATES[status];
-    if (templateKey) {
-      await sendOrderEmail({
-        orderId: existing.orderId,
-        userId: existing.order.userId,
-        to: contactEmail,
-        templateKey,
-        variables: { order_number: existing.order.orderNumber },
-      });
-    }
+  const templateKey = RETURN_STATUS_TEMPLATES[status];
+  if (templateKey) {
+    await sendOrderEmail({
+      orderId: existing.orderId,
+      userId: existing.order.userId,
+      to: contactEmail,
+      templateKey,
+      variables: { order_number: existing.order.orderNumber },
+    });
+  }
 
-    if (existing.order.userId) {
-      await createNotification({
-        userId: existing.order.userId,
-        type: "RETURN_STATUS",
-        title: `Return for order ${existing.order.orderNumber}`,
-        body: `Your return is now ${status.replace(/_/g, " ").toLowerCase()}.`,
-        link: "/account/returns",
-      });
-    }
+  if (existing.order.userId) {
+    await createNotification({
+      userId: existing.order.userId,
+      type: "RETURN_STATUS",
+      title: `Return for order ${existing.order.orderNumber}`,
+      body: `Your return is now ${status.replace(/_/g, " ").toLowerCase()}.`,
+      link: "/account/returns",
+    });
   }
 
   revalidatePath("/admin/returns");

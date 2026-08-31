@@ -3,11 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireRole, requireStaff } from "@/lib/admin-auth";
+import { OPERATIONS_ROLES } from "@/lib/admin-permissions";
 import { generateBarcodeValue, type BarcodeType } from "@/lib/barcode/generate";
 import { validateBarcodeForType } from "@/lib/barcode/validate";
 import type { Prisma } from "@/generated/prisma/client";
-
-const INVENTORY_ROLES = ["SUPER_ADMIN", "INVENTORY_MANAGER"] as const;
 
 function revalidateInventoryPaths() {
   revalidatePath("/admin/inventory");
@@ -39,7 +38,7 @@ async function setVariantBarcode(
 }
 
 export async function generateBarcode(variantId: string, type: BarcodeType = "CODE128") {
-  const session = await requireRole([...INVENTORY_ROLES]);
+  const session = await requireRole(OPERATIONS_ROLES);
   const variant = await db.productVariant.findUniqueOrThrow({ where: { id: variantId } });
   if (variant.barcode) throw new Error("This variant already has a barcode. Use Regenerate instead.");
 
@@ -54,7 +53,7 @@ export async function generateBarcode(variantId: string, type: BarcodeType = "CO
 }
 
 export async function regenerateBarcode(variantId: string, type: BarcodeType = "CODE128") {
-  const session = await requireRole([...INVENTORY_ROLES]);
+  const session = await requireRole(OPERATIONS_ROLES);
   const variant = await db.productVariant.findUniqueOrThrow({ where: { id: variantId } });
   if (variant.barcodeSource === "MANUFACTURER") {
     throw new Error("This variant carries a manufacturer/GS1 barcode — clear it manually before regenerating.");
@@ -71,7 +70,7 @@ export async function regenerateBarcode(variantId: string, type: BarcodeType = "
 }
 
 export async function bulkGenerateBarcodes(variantIds: string[], type: BarcodeType = "CODE128") {
-  const session = await requireRole([...INVENTORY_ROLES]);
+  const session = await requireRole(OPERATIONS_ROLES);
   if (variantIds.length === 0) throw new Error("No variants selected.");
 
   const variants = await db.productVariant.findMany({ where: { id: { in: variantIds } } });
@@ -88,7 +87,7 @@ export async function bulkGenerateBarcodes(variantIds: string[], type: BarcodeTy
 }
 
 export async function assignManufacturerBarcode(variantId: string, code: string, type: BarcodeType) {
-  const session = await requireRole([...INVENTORY_ROLES]);
+  const session = await requireRole(OPERATIONS_ROLES);
   const trimmed = code.trim();
   if (!validateBarcodeForType(trimmed, type)) {
     throw new Error(`"${trimmed}" is not a valid ${type.replace("_", "-")} number (check digit mismatch).`);
@@ -102,7 +101,7 @@ export async function assignManufacturerBarcode(variantId: string, code: string,
 }
 
 export async function deactivateBarcode(variantId: string) {
-  await requireRole([...INVENTORY_ROLES]);
+  await requireRole(OPERATIONS_ROLES);
   await db.productVariant.update({
     where: { id: variantId },
     data: { barcode: null, barcodeType: null, barcodeSource: null, barcodeGeneratedAt: null },

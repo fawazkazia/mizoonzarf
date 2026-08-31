@@ -5,6 +5,9 @@ import { sendOrderEmail } from "@/lib/notifications/order-email";
 import { createNotification } from "@/lib/notifications/inapp";
 import { estimatePointsEarned, reverseLoyaltyPoints } from "@/lib/loyalty";
 import { recomputeUserReliability } from "@/lib/risk/recomputeReliability";
+import { generateInvoiceNumber } from "@/lib/orders/invoicing";
+import { getSettings } from "@/lib/settings";
+import { postOrderPaidEntry, postCashCollectedEntry } from "@/lib/finance/ledger";
 import type { OrderStatus, PaymentMethod, PaymentStatus } from "@/generated/prisma/client";
 
 const POINTS_REVERSING_STATUSES: OrderStatus[] = ["CANCELLED", "REFUNDED", "RETURNED"];
@@ -41,9 +44,33 @@ export async function applyOrderStatus(orderId: string, status: OrderStatus, not
   // No real transition (e.g. admin re-saves the same status) — skip history/loyalty/notifications entirely so it can't double-send.
   if (order.status === status) return;
 
+  // For COD, delivery *is* the payment-confirmation event in this codebase — there's no
+  // gateway webhook to call markOrderPaid(), so revenue recognition/cash collection has to
+  // happen here instead. Guarded so an already-settled COD order (or a re-delivered edge case)
+  // never double-recognizes revenue.
+  const codNewlyPaid = status === "DELIVERED" && order.paymentMethod === "COD" && order.paymentStatus !== "PAID";
+  let codInvoiceNumber: string | undefined;
+  let codInvoiceDate: Date | undefined;
+
   await db.$transaction(async (tx) => {
     await tx.order.update({ where: { id: orderId }, data: { status } });
     await tx.orderStatusHistory.create({ data: { orderId, status, note: note || undefined } });
+
+    if (codNewlyPaid) {
+      const invoice = await generateInvoiceNumber(tx);
+      codInvoiceNumber = invoice.number;
+      codInvoiceDate = invoice.date;
+      await tx.order.update({
+        where: { id: orderId },
+        data: { paymentStatus: "PAID", invoiceNumber: invoice.number, invoiceDate: invoice.date },
+      });
+      const payment = await tx.payment.findFirst({ where: { orderId, status: "PENDING" } });
+      if (payment) {
+        await tx.payment.update({ where: { id: payment.id }, data: { status: "PAID" } });
+      } else {
+        await tx.payment.create({ data: { orderId, provider: "COD", status: "PAID", amount: order.total, currency: order.currency } });
+      }
+    }
 
     if (status === "DELIVERED" && order.userId) {
       const alreadyEarned = await tx.loyaltyTransaction.findFirst({ where: { orderId, type: "EARN_ORDER" } });
@@ -71,6 +98,37 @@ export async function applyOrderStatus(orderId: string, status: OrderStatus, not
       await recomputeUserReliability(tx, order.userId);
     }
   });
+
+  if (codNewlyPaid) {
+    // Non-blocking follow-up, same pattern as markOrderPaid: a misconfigured chart of accounts
+    // must never roll back a delivery/payment-confirmation that's already been committed above.
+    try {
+      const [items, settings] = await Promise.all([db.orderItem.findMany({ where: { orderId } }), getSettings()]);
+      const paidOrder = { ...order, paymentStatus: "PAID" as const, invoiceNumber: codInvoiceNumber ?? null, invoiceDate: codInvoiceDate ?? null };
+      await db.$transaction(async (tx) => {
+        await postOrderPaidEntry(tx, { order: paidOrder, items, taxInclusive: settings.taxInclusive });
+        await postCashCollectedEntry(tx, { order: paidOrder, amount: Number(order.total) });
+        await tx.invoice.create({
+          data: {
+            invoiceNumber: codInvoiceNumber ?? `INV-${order.orderNumber}`,
+            type: "SALES",
+            status: "PAID",
+            orderId,
+            issueDate: codInvoiceDate ?? new Date(),
+            subtotal: order.subtotal,
+            taxAmount: order.taxAmount,
+            total: order.total,
+            amountPaid: order.total,
+          },
+        });
+      });
+    } catch (err) {
+      console.error("[ledger] postOrderPaidEntry (COD delivery) failed", err);
+      await db.auditLog.create({
+        data: { action: "JOURNAL_POST_FAILED", entityType: "Order", entityId: orderId, meta: { kind: "ORDER_PAID", error: String(err) } },
+      });
+    }
+  }
 
   const templateKey = ORDER_EVENT_TEMPLATES[status];
   const user = order.userId ? await db.user.findUnique({ where: { id: order.userId } }) : null;

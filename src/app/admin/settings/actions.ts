@@ -2,12 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/admin-auth";
+import { requireRole } from "@/lib/admin-auth";
+import { SETTINGS_ROLES } from "@/lib/admin-permissions";
 import { settingsInputSchema, type SettingsInput } from "@/lib/validation/admin-settings";
 import type { Prisma } from "@/generated/prisma/client";
 
 export async function updateSettings(raw: SettingsInput) {
-  await requireStaff();
+  await requireRole(SETTINGS_ROLES);
   const input = settingsInputSchema.parse(raw);
 
   await Promise.all(

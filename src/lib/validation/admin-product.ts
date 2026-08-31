@@ -17,6 +17,7 @@ export const variantInputSchema = z.object({
   attributeValues: z.array(variantAttrInputSchema).default([]),
   price: z.coerce.number().min(0),
   salePrice: z.coerce.number().min(0).optional().nullable(),
+  costPrice: z.coerce.number().min(0).optional().nullable(),
   stock: z.coerce.number().int().min(0),
   lowStockThreshold: z.coerce.number().int().min(0).default(5),
 });

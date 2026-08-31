@@ -77,6 +77,7 @@ export default async function EditProductPage({ params }: PageProps) {
             attributeValues: variantAttrs(v),
             price: String(v.price),
             salePrice: v.salePrice ? String(v.salePrice) : "",
+            costPrice: v.costPrice ? String(v.costPrice) : "",
             stock: String(v.stock),
             lowStockThreshold: String(v.lowStockThreshold),
           })),

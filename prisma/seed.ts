@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { PrismaClient, type Gender, type BannerPosition, type PromotionType, type DiscountType, type Prisma } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { deriveMirrorFields, type VariantAttr } from "../src/lib/inventory/variant-attributes";
+import { DEFAULT_CHART_OF_ACCOUNTS } from "../src/lib/finance/accounts";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const db = new PrismaClient({ adapter });
@@ -1097,12 +1098,18 @@ async function main() {
     db.cartItem.deleteMany(),
     db.cart.deleteMany(),
     db.orderStatusHistory.deleteMany(),
+    db.refund.deleteMany(),
+    db.invoice.deleteMany(),
     db.payment.deleteMany(),
     db.shipment.deleteMany(),
     db.return.deleteMany(),
     db.orderItem.deleteMany(),
     db.order.deleteMany(),
     db.address.deleteMany(),
+    db.journalEntry.deleteMany(),
+    db.purchaseOrder.deleteMany(),
+    db.expense.deleteMany(),
+    db.supplier.deleteMany(),
     db.productVariant.deleteMany(),
     db.warehouse.deleteMany(),
     db.productImage.deleteMany(),
@@ -1378,6 +1385,15 @@ async function main() {
   ];
   for (const [i, key] of hiddenSections.entries()) {
     await db.homepageSection.create({ data: { key, sortOrder: sections.length + i, isVisible: false } });
+  }
+
+  console.log("Seeding chart of accounts...");
+  for (const account of DEFAULT_CHART_OF_ACCOUNTS) {
+    await db.ledgerAccount.upsert({
+      where: { code: account.code },
+      create: { code: account.code, name: account.name, type: account.type, isContra: account.isContra ?? false },
+      update: { name: account.name, type: account.type, isContra: account.isContra ?? false },
+    });
   }
 
   console.log("Creating settings...");

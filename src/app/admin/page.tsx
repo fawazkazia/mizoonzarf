@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { auth } from "@/lib/auth";
 import { getDashboardStats } from "@/lib/data/admin-dashboard";
 import { formatINR } from "@/lib/currency";
 import { StatCard } from "@/components/admin/StatCard";
@@ -6,22 +7,29 @@ import { RevenueTrendChart, OrdersByStatusChart } from "@/components/admin/Dashb
 import { Table, Th, Td, EmptyRow } from "@/components/admin/Table";
 import { Badge } from "@/components/ui/Badge";
 import { getOrderStatusDisplay } from "@/lib/orders/status";
+import { FINANCE_ROLES } from "@/lib/admin-permissions";
+import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard" };
 
 export default async function AdminDashboardPage() {
-  const stats = await getDashboardStats();
+  const [stats, session] = await Promise.all([getDashboardStats(), auth()]);
+  // Never expose revenue to a role outside Finance — see the spec's "never expose financial
+  // information to unauthorized staff." Everything else on this dashboard (orders, stock,
+  // abandoned carts) is legitimately useful to every staff role, so only these two tiles and
+  // the revenue trend chart below are conditional.
+  const canSeeRevenue = FINANCE_ROLES.includes(session!.user.role as never);
 
   return (
     <div className="flex flex-col gap-8">
       <h1 className="font-display text-3xl">Dashboard</h1>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
-        <StatCard label="Revenue" value={formatINR(stats.revenue)} href="/admin/analytics" />
+        {canSeeRevenue && <StatCard label="Revenue" value={formatINR(stats.revenue)} href="/admin/analytics" />}
         <StatCard label="Orders" value={String(stats.orderCount)} href="/admin/orders" />
         <StatCard label="Customers" value={String(stats.customerCount)} href="/admin/customers" />
         <StatCard label="Products" value={String(stats.productCount)} href="/admin/products" />
-        <StatCard label="Avg. Order Value" value={formatINR(stats.avgOrderValue)} href="/admin/analytics" />
+        {canSeeRevenue && <StatCard label="Avg. Order Value" value={formatINR(stats.avgOrderValue)} href="/admin/analytics" />}
         <StatCard
           label="Low Stock"
           value={String(stats.lowStockCount)}
@@ -42,11 +50,13 @@ export default async function AdminDashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="border border-line bg-paper p-5">
-          <h2 className="mb-4 font-display text-lg">Revenue — Last 14 Days</h2>
-          <RevenueTrendChart data={stats.revenueTrend} />
-        </div>
+      <div className={cn("grid gap-6", canSeeRevenue && "lg:grid-cols-2")}>
+        {canSeeRevenue && (
+          <div className="border border-line bg-paper p-5">
+            <h2 className="mb-4 font-display text-lg">Revenue — Last 14 Days</h2>
+            <RevenueTrendChart data={stats.revenueTrend} />
+          </div>
+        )}
         <div className="border border-line bg-paper p-5">
           <h2 className="mb-4 font-display text-lg">Orders by Status</h2>
           <OrdersByStatusChart data={stats.ordersByStatus} />

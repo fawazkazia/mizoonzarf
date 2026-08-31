@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminTopbar } from "@/components/admin/AdminTopbar";
 import { AdminThemeProvider, type AdminTheme } from "@/components/admin/AdminThemeProvider";
-import { ButtonLink } from "@/components/ui/Button";
+import { AccessDenied } from "@/components/admin/AccessDenied";
 
 export const metadata = { title: { template: "%s | Admin", default: "Admin Dashboard" } };
 export const dynamic = "force-dynamic";
@@ -18,20 +18,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (session.user.role === "CUSTOMER") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-paper-dim px-6 text-center">
-        <h1 className="font-display text-3xl">Access Denied</h1>
-        <p className="max-w-sm text-ink-soft">
-          Your account doesn&apos;t have permission to view the admin dashboard. Contact a store administrator if you
-          believe this is a mistake.
-        </p>
-        <ButtonLink href="/">Back to Store</ButtonLink>
+      <div className="flex min-h-screen items-center justify-center bg-paper-dim">
+        <AccessDenied
+          message="Your account doesn't have permission to view the admin dashboard. Contact a store administrator if you believe this is a mistake."
+          backHref="/"
+          backLabel="Back to Store"
+        />
       </div>
     );
   }
 
   return (
     <AdminThemeProvider initialTheme={initialTheme} className="flex min-h-screen bg-paper-dim print:bg-paper">
-      <AdminSidebar />
+      <AdminSidebar role={session.user.role} />
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <AdminTopbar name={session.user.name ?? "Admin"} role={session.user.role} />
         <main className="min-w-0 flex-1 p-4 print:p-0 lg:p-8">{children}</main>

@@ -3,6 +3,8 @@ import { notify, ORDER_EVENT_TEMPLATES } from "@/lib/notifications/registry";
 import { sendOrderEmail } from "@/lib/notifications/order-email";
 import { generateInvoiceNumber } from "@/lib/orders/invoicing";
 import { maybeAutoCreateShipment } from "@/lib/shipping/orchestrator";
+import { getSettings } from "@/lib/settings";
+import { postOrderPaidEntry, postCashCollectedEntry } from "@/lib/finance/ledger";
 
 async function resolveContacts(orderId: string): Promise<{ email: string | null; phone: string | null }> {
   const order = await db.order.findUnique({
@@ -77,6 +79,37 @@ export async function markOrderPaid(orderId: string, transactionRef: string, raw
   await notifySafely({ channel: "WHATSAPP", to: phone, templateKey: ORDER_EVENT_TEMPLATES.PAYMENT_CONFIRMED, variables });
 
   await maybeAutoCreateShipment(orderId);
+
+  // Non-blocking follow-up: a misconfigured chart of accounts must never roll back a payment
+  // confirmation that's already been committed above. Failures are logged for a "Finance ->
+  // Posting Failures" worklist (a plain AuditLog query) rather than thrown.
+  try {
+    const [items, settings] = await Promise.all([db.orderItem.findMany({ where: { orderId } }), getSettings()]);
+    await db.$transaction(async (tx) => {
+      await postOrderPaidEntry(tx, { order, items, taxInclusive: settings.taxInclusive });
+      // Cash is treated as collected the moment revenue is recognized for a prepaid order (no
+      // gateway-settlement-lag modeling) — see postCashCollectedEntry's doc comment.
+      await postCashCollectedEntry(tx, { order, amount: Number(order.total) });
+      await tx.invoice.create({
+        data: {
+          invoiceNumber: order.invoiceNumber ?? `INV-${order.orderNumber}`,
+          type: "SALES",
+          status: "PAID",
+          orderId,
+          issueDate: order.invoiceDate ?? new Date(),
+          subtotal: order.subtotal,
+          taxAmount: order.taxAmount,
+          total: order.total,
+          amountPaid: order.total,
+        },
+      });
+    });
+  } catch (err) {
+    console.error("[ledger] postOrderPaidEntry failed", err);
+    await db.auditLog.create({
+      data: { action: "JOURNAL_POST_FAILED", entityType: "Order", entityId: orderId, meta: { kind: "ORDER_PAID", error: String(err) } },
+    });
+  }
 }
 
 /** Idempotent — same guard pattern as markOrderPaid. Restocks the items reserved at checkout. */

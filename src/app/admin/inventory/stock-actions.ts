@@ -3,9 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/admin-auth";
+import { OPERATIONS_ROLES } from "@/lib/admin-permissions";
 import { applyStockMovement } from "@/lib/inventory/stock";
-
-const INVENTORY_ROLES = ["SUPER_ADMIN", "INVENTORY_MANAGER"] as const;
 
 function revalidateStockPaths() {
   revalidatePath("/admin/inventory");
@@ -14,7 +13,7 @@ function revalidateStockPaths() {
 }
 
 export async function stockIn(variantId: string, warehouseId: string, quantity: number, reason?: string) {
-  const session = await requireRole([...INVENTORY_ROLES]);
+  const session = await requireRole(OPERATIONS_ROLES);
   if (quantity <= 0) throw new Error("Quantity must be positive.");
   const movement = await db.$transaction((tx) =>
     applyStockMovement(tx, { variantId, warehouseId, type: "STOCK_IN", delta: quantity, reason, userId: session.user.id })
@@ -24,7 +23,7 @@ export async function stockIn(variantId: string, warehouseId: string, quantity: 
 }
 
 export async function stockOut(variantId: string, warehouseId: string, quantity: number, reason?: string) {
-  const session = await requireRole([...INVENTORY_ROLES]);
+  const session = await requireRole(OPERATIONS_ROLES);
   if (quantity <= 0) throw new Error("Quantity must be positive.");
   const movement = await db.$transaction((tx) =>
     applyStockMovement(tx, { variantId, warehouseId, type: "STOCK_OUT", delta: -quantity, reason, userId: session.user.id, requireWarehouseStock: true })
@@ -34,7 +33,7 @@ export async function stockOut(variantId: string, warehouseId: string, quantity:
 }
 
 export async function receiveStock(variantId: string, warehouseId: string, quantity: number, reason?: string) {
-  const session = await requireRole([...INVENTORY_ROLES]);
+  const session = await requireRole(OPERATIONS_ROLES);
   if (quantity <= 0) throw new Error("Quantity must be positive.");
   const movement = await db.$transaction((tx) =>
     applyStockMovement(tx, {
@@ -52,7 +51,7 @@ export async function receiveStock(variantId: string, warehouseId: string, quant
 }
 
 export async function transferStock(variantId: string, fromWarehouseId: string, toWarehouseId: string, quantity: number, reason?: string) {
-  const session = await requireRole([...INVENTORY_ROLES]);
+  const session = await requireRole(OPERATIONS_ROLES);
   if (quantity <= 0) throw new Error("Quantity must be positive.");
   if (fromWarehouseId === toWarehouseId) throw new Error("Source and destination warehouses must be different.");
 
@@ -86,7 +85,7 @@ export async function transferStock(variantId: string, fromWarehouseId: string, 
 }
 
 export async function adjustStock(variantId: string, warehouseId: string, delta: number, reason: string) {
-  const session = await requireRole([...INVENTORY_ROLES]);
+  const session = await requireRole(OPERATIONS_ROLES);
   if (delta === 0) throw new Error("Adjustment must be non-zero.");
   if (!reason.trim()) throw new Error("A reason is required for manual adjustments.");
   const movement = await db.$transaction((tx) =>

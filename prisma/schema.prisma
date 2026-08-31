@@ -22,6 +22,8 @@ enum Role {
   MARKETING_MANAGER
   CUSTOMER_SUPPORT
   INVENTORY_MANAGER
+  BUSINESS_OWNER
+  FINANCE
 }
 
 enum Gender {
@@ -190,6 +192,70 @@ enum ReliabilityStatus {
   TRUSTED
   NORMAL
   HIGH_RISK
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT
+  APPROVED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CLOSED
+  CANCELLED
+}
+
+enum ExpenseCategory {
+  RENT
+  SALARIES
+  MARKETING
+  UTILITIES
+  SOFTWARE_SUBSCRIPTIONS
+  SHIPPING_LOGISTICS
+  BANK_FEES
+  OFFICE_SUPPLIES
+  PROFESSIONAL_FEES
+  OTHER
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  COGS
+  EXPENSE
+}
+
+/// Generic tag for what produced a JournalEntry — keeps that model decoupled from every
+/// possible source table instead of one nullable FK column per source type, which would
+/// need a new migration every time a new postable event is added.
+enum FinanceSourceType {
+  ORDER_PAYMENT
+  ORDER_REFUND
+  PURCHASE_ORDER_RECEIPT
+  EXPENSE
+  CASH_COLLECTED
+  SUPPLIER_PAYMENT
+  MANUAL_ADJUSTMENT
+}
+
+enum InvoiceType {
+  SALES
+  PURCHASE
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  VOID
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSED
+  FAILED
 }
 
 // ---------- Auth.js ----------
@@ -488,6 +554,10 @@ model ProductVariant {
   attributeValues    Json           @default("[]")
   price              Decimal        @db.Decimal(10, 2)
   salePrice          Decimal?       @db.Decimal(10, 2)
+  /// Last-cost basis (most recent PO receipt's unitCost) — used for COGS. Null until first
+  /// received/manually set. See OrderItem.costPriceSnapshot for the point-in-time value used
+  /// on historical orders, which must never move when this changes later.
+  costPrice          Decimal?       @db.Decimal(10, 2)
   stock              Int            @default(0)
   reservedStock      Int            @default(0)
   lowStockThreshold  Int            @default(5)
@@ -498,12 +568,13 @@ model ProductVariant {
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
-  product         Product                 @relation(fields: [productId], references: [id], onDelete: Cascade)
-  cartItems       CartItem[]
-  orderItems      OrderItem[]
-  warehouseStocks VariantWarehouseStock[]
-  stockMovements  StockMovement[]
-  scanLogs        BarcodeScanLog[]
+  product             Product                 @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems           CartItem[]
+  orderItems          OrderItem[]
+  warehouseStocks     VariantWarehouseStock[]
+  stockMovements      StockMovement[]
+  scanLogs            BarcodeScanLog[]
+  purchaseOrderItems  PurchaseOrderItem[]
 
   @@index([productId])
   @@map("product_variants")
@@ -682,6 +753,8 @@ model Order {
   returns             Return[]
   loyaltyTransactions LoyaltyTransaction[]
   emailLogs           EmailLog[]
+  invoices            Invoice[]
+  refunds             Refund[]
 
   @@index([userId])
   @@index([status])
@@ -706,6 +779,9 @@ model OrderItem {
   gstRate           Decimal @default(0) @db.Decimal(5, 2)
   hsnCode           String?
   packedQuantity    Int     @default(0)
+  /// Frozen copy of ProductVariant.costPrice at order time — COGS must use this, never a live
+  /// lookup, so later PO receipts don't retroactively change a historical order's profit.
+  costPriceSnapshot Decimal? @db.Decimal(10, 2)
 
   order   Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product        @relation(fields: [productId], references: [id])
@@ -727,7 +803,8 @@ model Payment {
   rawResponse    Json?
   createdAt      DateTime      @default(now())
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  refunds Refund[]
 
   @@index([orderId])
   @@map("payments")
@@ -852,6 +929,7 @@ model Return {
   order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
   orderItem OrderItem? @relation(fields: [orderItemId], references: [id])
   warehouse Warehouse? @relation(fields: [warehouseId], references: [id])
+  refunds   Refund[]
 
   @@map("returns")
 }
@@ -882,6 +960,7 @@ model Warehouse {
   stockMovements StockMovement[]
   returns        Return[]
   shipments      Shipment[]
+  purchaseOrders PurchaseOrder[]
 
   @@map("warehouses")
 }
@@ -975,6 +1054,218 @@ model BarcodeCounter {
   updatedAt  DateTime @updatedAt
 
   @@map("barcode_counters")
+}
+
+// ---------- Suppliers & Purchasing ----------
+
+model Supplier {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  contactName String?
+  email       String?
+  phone       String?
+  address     String?
+  gstin       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  purchaseOrders PurchaseOrder[]
+  expenses       Expense[]
+  invoices       Invoice[]
+
+  @@map("suppliers")
+}
+
+model PurchaseOrder {
+  id          String              @id @default(cuid())
+  poNumber    String              @unique
+  supplierId  String
+  warehouseId String
+  status      PurchaseOrderStatus @default(DRAFT)
+  notes       String?
+  expectedAt  DateTime?
+  sentAt      DateTime?
+  approvedAt  DateTime?
+  receivedAt  DateTime?
+  closedAt    DateTime?
+  createdById String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  supplier  Supplier            @relation(fields: [supplierId], references: [id])
+  warehouse Warehouse           @relation(fields: [warehouseId], references: [id])
+  items     PurchaseOrderItem[]
+  invoices  Invoice[]
+
+  @@index([supplierId])
+  @@index([status])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id               String  @id @default(cuid())
+  purchaseOrderId  String
+  variantId        String
+  quantityOrdered  Int
+  quantityReceived Int     @default(0)
+  unitCost         Decimal @db.Decimal(10, 2)
+
+  purchaseOrder PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  variant       ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@index([purchaseOrderId])
+  @@map("purchase_order_items")
+}
+
+model Expense {
+  id          String          @id @default(cuid())
+  category    ExpenseCategory
+  description String
+  amount      Decimal         @db.Decimal(10, 2)
+  incurredAt  DateTime
+  supplierId  String?
+  /// Free-text bank/cash note for Phase A (e.g. "HDFC Current A/c") — not yet linked to an
+  /// Account row; the debit side of the posted journal entry is always Cash & Bank (code 1000)
+  /// regardless of this note, until a later phase adds real bank-account selection.
+  paidFrom    String?
+  createdById String?
+  createdAt   DateTime        @default(now())
+
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+
+  @@index([category])
+  @@index([incurredAt])
+  @@map("expenses")
+}
+
+/// Configurable chart of accounts. Named LedgerAccount (not "Account") to avoid colliding with
+/// the existing Auth.js Account model (OAuth account linking). `code` is the human-facing
+/// ledger number (e.g. "4000"); `type` buckets it for P&L math. Seeded with a default set (see
+/// prisma/seed.ts) but editable via /admin/finance/chart-of-accounts — new accounts are just
+/// new rows, never a migration.
+model LedgerAccount {
+  id       String      @id @default(cuid())
+  code     String      @unique
+  name     String
+  type     AccountType
+  /// True for contra accounts (Sales Discounts, Sales Returns) that reduce their parent type's
+  /// total instead of adding to it — P&L math subtracts these instead of summing them.
+  isContra Boolean     @default(false)
+  isActive Boolean     @default(true)
+  createdAt DateTime   @default(now())
+
+  journalLines JournalLine[]
+
+  @@map("ledger_accounts")
+}
+
+/// Atomic global sequence for JournalEntry numbering — same race-safe upsert pattern as
+/// InvoiceCounter/BarcodeCounter (see generateInvoiceNumber in src/lib/orders/invoicing.ts).
+model JournalEntryCounter {
+  id         String   @id @default("singleton")
+  lastNumber Int      @default(0)
+  updatedAt  DateTime @updatedAt
+
+  @@map("journal_entry_counters")
+}
+
+/// One posting event = one JournalEntry with >=2 balanced JournalLines (debits must equal
+/// credits — enforced in src/lib/finance/ledger.ts before insert). `sourceType`+`sourceId`
+/// generically link back to whatever business event produced this instead of one nullable FK
+/// per source type — see the FinanceSourceType enum doc comment for why. The unique constraint
+/// below is also the idempotency guard: a given (sourceType, sourceId, kind) can post once, ever.
+model JournalEntry {
+  id          String            @id @default(cuid())
+  entryNumber String            @unique
+  date        DateTime
+  description String
+  sourceType  FinanceSourceType
+  sourceId    String
+  /// Distinguishes multiple entries against the same source, e.g. an order gets both an
+  /// "ORDER_PAID" entry and, later, an "ORDER_REFUND" reversal — same sourceId, different kind.
+  kind        String
+  createdById String?
+  createdAt   DateTime          @default(now())
+
+  lines JournalLine[]
+
+  @@unique([sourceType, sourceId, kind])
+  @@index([date])
+  @@map("journal_entries")
+}
+
+model JournalLine {
+  id        String  @id @default(cuid())
+  entryId   String
+  accountId String
+  debit     Decimal @default(0) @db.Decimal(12, 2)
+  credit    Decimal @default(0) @db.Decimal(12, 2)
+  memo      String?
+
+  entry   JournalEntry  @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  account LedgerAccount @relation(fields: [accountId], references: [id])
+
+  @@index([entryId])
+  @@index([accountId])
+  @@map("journal_lines")
+}
+
+/// First-class invoice, distinct from Order.invoiceNumber/invoiceDate (which stay untouched —
+/// the existing /admin/orders/[id]/invoice page keeps rendering off those directly). This is
+/// the AR/AP system-of-record: SALES invoices link orderId; PURCHASE invoices link
+/// purchaseOrderId+supplierId. Exactly one pairing is set, enforced in application code that
+/// creates these rows (Prisma has no partial-FK CHECK to enforce it at the schema level).
+model Invoice {
+  id              String        @id @default(cuid())
+  invoiceNumber   String        @unique
+  type            InvoiceType
+  status          InvoiceStatus @default(ISSUED)
+  orderId         String?
+  purchaseOrderId String?
+  supplierId      String?
+  issueDate       DateTime
+  dueDate         DateTime?
+  subtotal        Decimal       @db.Decimal(10, 2)
+  taxAmount       Decimal       @default(0) @db.Decimal(10, 2)
+  total           Decimal       @db.Decimal(10, 2)
+  amountPaid      Decimal       @default(0) @db.Decimal(10, 2)
+  createdAt       DateTime      @default(now())
+
+  order         Order?         @relation(fields: [orderId], references: [id])
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  supplier      Supplier?      @relation(fields: [supplierId], references: [id])
+  refunds       Refund[]
+
+  @@index([orderId])
+  @@index([purchaseOrderId])
+  @@map("invoices")
+}
+
+/// Unifies the two refund paths that used to be disconnected (order-level refundPayment vs.
+/// the Return workflow) — one row per real financial reversal, whichever path triggered it.
+model Refund {
+  id          String       @id @default(cuid())
+  orderId     String
+  returnId    String?
+  paymentId   String?
+  invoiceId   String?
+  amount      Decimal      @db.Decimal(10, 2)
+  reason      String?
+  status      RefundStatus @default(PENDING)
+  providerRef String?
+  rawResponse Json?
+  createdById String?
+  createdAt   DateTime     @default(now())
+
+  order   Order    @relation(fields: [orderId], references: [id])
+  return  Return?  @relation(fields: [returnId], references: [id])
+  payment Payment? @relation(fields: [paymentId], references: [id])
+  invoice Invoice? @relation(fields: [invoiceId], references: [id])
+
+  @@index([orderId])
+  @@map("refunds")
 }
 
 // ---------- Marketing ----------

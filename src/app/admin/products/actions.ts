@@ -36,6 +36,7 @@ export async function createProduct(raw: ProductInput) {
         ...deriveMirrorFields(v.attributeValues),
         price: v.price,
         salePrice: v.salePrice || null,
+        costPrice: v.costPrice || null,
         stock: v.stock,
         lowStockThreshold: v.lowStockThreshold,
       }))
@@ -127,6 +128,7 @@ export async function updateProduct(id: string, raw: ProductInput) {
           ...deriveMirrorFields(v.attributeValues),
           price: v.price,
           salePrice: v.salePrice || null,
+          costPrice: v.costPrice || null,
           stock: v.stock,
           lowStockThreshold: v.lowStockThreshold,
         };
@@ -268,6 +270,7 @@ export async function duplicateProduct(id: string) {
             colorHex: v.colorHex,
             price: v.price,
             salePrice: v.salePrice,
+            costPrice: v.costPrice,
             stock: v.stock,
             lowStockThreshold: v.lowStockThreshold,
           })),

@@ -3,10 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ADMIN_NAV as NAV } from "./nav";
+import { ADMIN_NAV as ALL_NAV } from "./nav";
+import { allowedRolesForPath } from "@/lib/admin-permissions";
 
-export function AdminSidebar() {
+export function AdminSidebar({ role }: { role: string }) {
   const pathname = usePathname();
+  const NAV = ALL_NAV.filter((item) => {
+    const allowed = allowedRolesForPath(item.href);
+    return !allowed || allowed.includes(role as never);
+  });
 
   return (
     <aside className="hidden w-60 shrink-0 flex-col border-r border-line bg-paper print:hidden lg:flex">
@@ -17,10 +22,14 @@ export function AdminSidebar() {
       </div>
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <ul className="flex flex-col gap-0.5">
-          {NAV.map((item) => {
+          {NAV.map((item, i) => {
             const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+            const showHeader = item.section && item.section !== NAV[i - 1]?.section;
             return (
               <li key={item.href}>
+                {showHeader && (
+                  <p className="mb-1 mt-4 px-3 text-[11px] font-medium uppercase tracking-[0.1em] text-ink-soft/70 first:mt-1">{item.section}</p>
+                )}
                 <Link
                   href={item.href}
                   className={cn(

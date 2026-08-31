@@ -28,3 +28,15 @@ export async function requireRole(roles: Role[]): Promise<AdminSession> {
   }
   return session;
 }
+
+/**
+ * Page-level (non-throwing) access check for use in section layout.tsx files — returns the
+ * session when access is allowed, or null when it should render the shared <AccessDenied />.
+ * Distinct from requireRole() above, which throws and is for Server Actions.
+ */
+export async function getSectionAccess(roles: Role[]): Promise<AdminSession | null> {
+  const session = await auth();
+  if (!session?.user || session.user.role === "CUSTOMER") return null;
+  if (!roles.includes(session.user.role as Role)) return null;
+  return session as AdminSession;
+}

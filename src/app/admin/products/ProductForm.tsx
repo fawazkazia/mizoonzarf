@@ -22,6 +22,7 @@ interface VariantRow {
   attributeValues: VariantAttr[];
   price: string;
   salePrice: string;
+  costPrice: string;
   stock: string;
   lowStockThreshold: string;
 }
@@ -59,6 +60,7 @@ function emptyVariant(attributeValues: VariantAttr[] = []): VariantRow {
     attributeValues,
     price: "",
     salePrice: "",
+    costPrice: "",
     stock: "10",
     lowStockThreshold: "5",
   };
@@ -472,6 +474,7 @@ export function ProductForm({
         attributeValues: v.attributeValues,
         price: Number(v.price),
         salePrice: v.salePrice ? Number(v.salePrice) : undefined,
+        costPrice: v.costPrice ? Number(v.costPrice) : undefined,
         stock: Number(v.stock),
         lowStockThreshold: Number(v.lowStockThreshold || 5),
       })),
@@ -786,6 +789,16 @@ export function ProductForm({
                     step="0.01"
                     value={v.salePrice}
                     onChange={(e) => updateVariant(v.key, { salePrice: e.target.value })}
+                    className="w-full"
+                  />
+                </Field>
+                <Field label="Cost Price" hint="What this variant costs you to source — never shown to customers. Used to compute profit; also updated automatically when a Purchase Order is received.">
+                  <Input
+                    placeholder="Cost Price"
+                    type="number"
+                    step="0.01"
+                    value={v.costPrice}
+                    onChange={(e) => updateVariant(v.key, { costPrice: e.target.value })}
                     className="w-full"
                   />
                 </Field>
