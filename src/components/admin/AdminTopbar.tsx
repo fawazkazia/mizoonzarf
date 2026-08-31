@@ -164,9 +164,18 @@ export function AdminTopbar({ name, role }: { name: string; role: string }) {
         >
           <UserCircle size={16} />
         </Link>
-        <Link href="/admin/profile" className="hidden text-right hover:opacity-70 sm:block">
-          <p className="text-sm font-medium">{name}</p>
-          <p className="text-[10px] uppercase tracking-wide text-ink-soft">{role.replace(/_/g, " ")}</p>
+        <Link
+          href="/admin/profile"
+          title="My Profile"
+          className="hidden items-center gap-2 rounded-full border border-line py-1 pl-1 pr-3 text-right transition-colors hover:border-ink sm:flex"
+        >
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-paper-dim text-ink-soft">
+            <UserCircle size={15} />
+          </span>
+          <span>
+            <p className="text-sm font-medium leading-tight">{name}</p>
+            <p className="text-[10px] uppercase tracking-wide text-ink-soft">{role.replace(/_/g, " ")}</p>
+          </span>
         </Link>
         <button
           onClick={() => signOut({ callbackUrl: "/" }).then(() => router.refresh())}
