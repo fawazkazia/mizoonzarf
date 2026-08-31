@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { Search, Menu, ArrowLeft, Sun, Moon } from "lucide-react";
+import { Search, Menu, ArrowLeft, Sun, Moon, UserCircle } from "lucide-react";
 import { AdminMobileNav } from "./AdminMobileNav";
 import { useAdminTheme } from "./AdminThemeProvider";
 
@@ -156,10 +156,18 @@ export function AdminTopbar({ name, role }: { name: string; role: string }) {
         >
           {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
         </button>
-        <div className="hidden text-right sm:block">
+        <Link
+          href="/admin/profile"
+          aria-label="My Profile"
+          title="My Profile"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-line text-ink-soft transition-colors hover:border-ink hover:text-ink sm:hidden"
+        >
+          <UserCircle size={16} />
+        </Link>
+        <Link href="/admin/profile" className="hidden text-right hover:opacity-70 sm:block">
           <p className="text-sm font-medium">{name}</p>
           <p className="text-[10px] uppercase tracking-wide text-ink-soft">{role.replace(/_/g, " ")}</p>
-        </div>
+        </Link>
         <button
           onClick={() => signOut({ callbackUrl: "/" }).then(() => router.refresh())}
           className="text-xs uppercase tracking-[0.1em] text-sale underline"

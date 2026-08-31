@@ -31,14 +31,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: string }).role ?? "CUSTOMER";
+        return token;
+      }
+
+      // On every subsequent request, confirm the password hasn't been reset since this
+      // token was issued — otherwise a stolen or still-open session survives a reset.
+      if (token.id) {
+        const dbUser = await db.user.findUnique({ where: { id: token.id as string }, select: { passwordChangedAt: true } });
+        if (dbUser?.passwordChangedAt && token.iat && Math.floor(dbUser.passwordChangedAt.getTime() / 1000) > (token.iat as number)) {
+          token.invalidated = true;
+        }
       }
       return token;
     },
     session({ session, token }) {
+      if (token.invalidated) {
+        return { ...session, user: undefined } as unknown as typeof session;
+      }
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;

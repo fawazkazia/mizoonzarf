@@ -57,6 +57,9 @@ function LoginForm() {
           placeholder="Password"
           className="border border-line px-4 py-3 text-sm"
         />
+        <Link href="/forgot-password" className="self-end text-xs text-ink-soft underline">
+          Forgot Password?
+        </Link>
         <Button type="submit" size="lg" disabled={loading}>
           {loading ? "Signing in..." : "Sign In"}
         </Button>

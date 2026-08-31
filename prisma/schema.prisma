@@ -258,6 +258,14 @@ enum RefundStatus {
   FAILED
 }
 
+/// Which login surface a password-reset token was issued for — checked again at redemption
+/// time against the account's *current* role so a token can never cross the customer/admin
+/// boundary, even if the account's role changed between request and redemption.
+enum PasswordResetPurpose {
+  CUSTOMER
+  ADMIN
+}
+
 // ---------- Auth.js ----------
 
 model User {
@@ -267,6 +275,9 @@ model User {
   emailVerified DateTime?
   image         String?
   passwordHash  String?
+  /// Bumped on every successful password reset — existing JWT sessions issued before this
+  /// timestamp are rejected (see jwt() callback in src/lib/auth.ts).
+  passwordChangedAt DateTime?
   phone         String?
   notes         String?   @db.Text
   role          Role      @default(CUSTOMER)
@@ -303,8 +314,41 @@ model User {
   phoneOtps                PhoneOtp[]
   verifiedPhones           VerifiedPhone[]
   emailLogs                EmailLog[]
+  passwordResetTokens      PasswordResetToken[]
 
   @@map("users")
+}
+
+/// Password-reset tokens for both customer and admin accounts (same User table). Only a
+/// SHA-256 hash of the raw token is stored — the raw token exists solely in the emailed link.
+model PasswordResetToken {
+  id          String               @id @default(cuid())
+  userId      String
+  tokenHash   String               @unique
+  purpose     PasswordResetPurpose
+  expiresAt   DateTime
+  usedAt      DateTime?
+  requesterIp String?
+  createdAt   DateTime             @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+/// Every forgot-password POST (whether or not the email matches an account) — used only to
+/// rate-limit requests, since a real PasswordResetToken can't be created for an unknown email.
+model PasswordResetAttempt {
+  id        String   @id @default(cuid())
+  email     String
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([ip, createdAt])
+  @@map("password_reset_attempts")
 }
 
 /// OTP codes + rate-limit ledger for mobile verification (see src/lib/otp/otp.ts). Codes are always bcrypt-hashed, never stored plaintext.
