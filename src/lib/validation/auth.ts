@@ -4,6 +4,7 @@ export const registerSchema = z.object({
   name: z.string().min(2, "Please enter your name"),
   email: z.string().email("Enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
+  termsAccepted: z.literal(true, { message: "You must agree to the Terms & Conditions to create an account." }),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;

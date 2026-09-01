@@ -45,6 +45,7 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
   const [cancellationPolicy, setCancellationPolicy] = useState(initial.legal.cancellationPolicy);
   const [returnPolicy, setReturnPolicy] = useState(initial.legal.returnPolicy);
   const [shippingPolicy, setShippingPolicy] = useState(initial.legal.shippingPolicy);
+  const [termsAndConditions, setTermsAndConditions] = useState(initial.legal.termsAndConditions);
   const [whatsappNumber, setWhatsappNumber] = useState(initial.whatsappNumber);
   const [supportEmail, setSupportEmail] = useState(initial.supportEmail);
   const [instagram, setInstagram] = useState(initial.socialLinks.instagram ?? "");
@@ -119,7 +120,7 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
       taxPercent,
       taxInclusive,
       gst: { sellerGstin, sellerState, sellerLegalName, sellerAddress },
-      legal: { cancellationPolicy, returnPolicy, shippingPolicy },
+      legal: { cancellationPolicy, returnPolicy, shippingPolicy, termsAndConditions },
       whatsappNumber,
       supportEmail,
       socialLinks: { instagram, facebook, tiktok, x },
@@ -329,6 +330,11 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
         <div className="sm:col-span-2">
           <Field label="Shipping Policy" hint="Shown at /shipping, below the delivery fee cards.">
             <Textarea rows={3} value={shippingPolicy} onChange={(e) => setShippingPolicy(e.target.value)} />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Terms &amp; Conditions" hint="Shown at /terms. Customers must agree to this when creating an account.">
+            <Textarea rows={7} value={termsAndConditions} onChange={(e) => setTermsAndConditions(e.target.value)} />
           </Field>
         </div>
       </Fieldset>

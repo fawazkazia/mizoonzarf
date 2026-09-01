@@ -24,6 +24,7 @@ export interface SiteSettings {
     cancellationPolicy: string;
     returnPolicy: string;
     shippingPolicy: string;
+    termsAndConditions: string;
   };
   /** The two full-width promo strips rendered site-wide just below the header. */
   promoStrips: {
@@ -175,6 +176,10 @@ const DEFAULT_SETTINGS: SiteSettings = {
     shippingPolicy:
       "Orders are processed within 1 business day. You'll receive a shipping confirmation with tracking details as soon as your " +
       "order leaves our warehouse. Delivery times may vary for remote areas.",
+    termsAndConditions:
+      "By using the MIZOON ZARF website, you agree to these terms. Prices are shown in INR and are inclusive/exclusive of GST as noted at checkout.\n\n" +
+      "We reserve the right to cancel orders in cases of pricing errors, suspected fraud, or stock unavailability — you'll be notified and refunded in full.\n\n" +
+      "All content on this site, including product images, text, and branding, is the property of MIZOON ZARF and may not be reproduced without permission.",
   },
   promoStrips: {
     codeBanner: {

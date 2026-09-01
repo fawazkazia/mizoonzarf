@@ -14,6 +14,7 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const fetchCart = useCartStore((s) => s.fetchCart);
@@ -21,12 +22,16 @@ export default function RegisterPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!termsAccepted) {
+      toast.error("Please agree to the Terms & Conditions to continue.");
+      return;
+    }
     setLoading(true);
 
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, termsAccepted }),
     });
     const data = await res.json();
 
@@ -59,6 +64,21 @@ export default function RegisterPage() {
         <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" className="border border-line px-4 py-3 text-sm" />
         <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address" className="border border-line px-4 py-3 text-sm" />
         <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (min. 8 characters)" className="border border-line px-4 py-3 text-sm" />
+        <label className="flex items-start gap-2 text-sm text-ink-soft">
+          <input
+            type="checkbox"
+            required
+            checked={termsAccepted}
+            onChange={(e) => setTermsAccepted(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            I agree to the{" "}
+            <Link href="/terms" target="_blank" className="underline">
+              Terms &amp; Conditions
+            </Link>
+          </span>
+        </label>
         <Button type="submit" size="lg" disabled={loading}>
           {loading ? "Creating account..." : "Create Account"}
         </Button>

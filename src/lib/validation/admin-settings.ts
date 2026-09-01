@@ -23,6 +23,7 @@ export const settingsInputSchema = z.object({
     cancellationPolicy: z.string(),
     returnPolicy: z.string(),
     shippingPolicy: z.string(),
+    termsAndConditions: z.string(),
   }),
   promoStrips: z.object({
     codeBanner: z.object({

@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  await db.user.create({ data: { name, email, passwordHash } });
+  await db.user.create({ data: { name, email, passwordHash, termsAcceptedAt: new Date() } });
 
   return NextResponse.json({ ok: true });
 }
