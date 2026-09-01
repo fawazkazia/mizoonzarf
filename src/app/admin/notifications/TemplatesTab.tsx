@@ -12,13 +12,18 @@ export interface TemplateRow {
   key: string;
   label: string;
   description: string;
-  group: "order" | "return" | "tracking";
+  group: "order" | "return" | "tracking" | "support";
   isActive: boolean;
   subject: string;
   body: string;
 }
 
-const GROUP_LABELS: Record<TemplateRow["group"], string> = { order: "Order Updates", return: "Returns & Refunds", tracking: "Tracking" };
+const GROUP_LABELS: Record<TemplateRow["group"], string> = {
+  order: "Order Updates",
+  return: "Returns & Refunds",
+  tracking: "Tracking",
+  support: "Customer Care",
+};
 
 function TemplateCard({ initial }: { initial: TemplateRow }) {
   const [isActive, setIsActive] = useState(initial.isActive);
@@ -126,7 +131,7 @@ function TemplateCard({ initial }: { initial: TemplateRow }) {
 }
 
 export function TemplatesTab({ initial }: { initial: TemplateRow[] }) {
-  const groups = (["order", "return", "tracking"] as const).map((g) => ({ group: g, items: initial.filter((t) => t.group === g) }));
+  const groups = (["order", "return", "tracking", "support"] as const).map((g) => ({ group: g, items: initial.filter((t) => t.group === g) }));
 
   return (
     <div className="flex flex-col gap-8">

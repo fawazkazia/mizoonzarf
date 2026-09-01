@@ -38,7 +38,7 @@ export function AdminMobileNav({ open, onClose, role }: { open: boolean; onClose
               const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
               const showHeader = item.section && item.section !== ADMIN_NAV[i - 1]?.section;
               return (
-                <li key={item.href}>
+                <li key={`${item.section ?? ""}-${item.href}`}>
                   {showHeader && (
                     <p className="mb-1 mt-4 px-3 text-[11px] font-medium uppercase tracking-[0.1em] text-ink-soft/70 first:mt-1">{item.section}</p>
                   )}

@@ -5,6 +5,7 @@ import type { EmailStatus } from "@/generated/prisma/client";
 export async function logEmail(params: {
   orderId?: string | null;
   userId?: string | null;
+  ticketId?: string | null;
   toEmail: string;
   notificationType: string;
   subject: string;
@@ -19,6 +20,7 @@ export async function logEmail(params: {
       data: {
         orderId: params.orderId ?? null,
         userId: params.userId ?? null,
+        ticketId: params.ticketId ?? null,
         toEmail: params.toEmail,
         notificationType: params.notificationType,
         subject: params.subject,

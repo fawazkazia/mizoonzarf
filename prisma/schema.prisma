@@ -24,6 +24,7 @@ enum Role {
   INVENTORY_MANAGER
   BUSINESS_OWNER
   FINANCE
+  CUSTOMER_SUPPORT_MANAGER
 }
 
 enum Gender {
@@ -258,6 +259,53 @@ enum RefundStatus {
   FAILED
 }
 
+enum TicketCategory {
+  ORDER_ISSUE
+  ORDER_CANCELLATION
+  RETURN_REQUEST
+  REFUND_ISSUE
+  EXCHANGE_REQUEST
+  DAMAGED_PRODUCT
+  WRONG_PRODUCT_RECEIVED
+  MISSING_PRODUCT
+  DELIVERY_ISSUE
+  DELAYED_DELIVERY
+  PAYMENT_ISSUE
+  COD_ISSUE
+  PRODUCT_ENQUIRY
+  PRODUCT_AVAILABILITY
+  SIZE_COLOUR_ENQUIRY
+  ACCOUNT_LOGIN_ISSUE
+  PASSWORD_RESET
+  WEBSITE_ISSUE
+  COMPLAINT
+  GENERAL_ENQUIRY
+  OTHER
+}
+
+enum TicketStatus {
+  NEW
+  OPEN
+  IN_PROGRESS
+  WAITING_FOR_CUSTOMER
+  RESOLVED
+  CLOSED
+  ESCALATED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TicketMessageAuthorType {
+  CUSTOMER
+  EMPLOYEE
+  SYSTEM
+}
+
 /// Which login surface a password-reset token was issued for — checked again at redemption
 /// time against the account's *current* role so a token can never cross the customer/admin
 /// boundary, even if the account's role changed between request and redemption.
@@ -286,6 +334,15 @@ model User {
   role          Role      @default(CUSTOMER)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  /// Optional personal details — populated by admin/Customer Care edits (no self-service UI
+  /// collects these yet), shown on the Customer Care profile "if available" per spec.
+  dateOfBirth DateTime?
+  gender      String?
+
+  /// Internal-only labels (VIP, Frequent Customer, Payment Issue, ...) — freeform like
+  /// Product.tags, searchable/filterable on the Customers list. Never shown to the customer.
+  tags String[] @default([])
 
   /// Set only once the `phone` above has completed OTP verification — cleared implicitly whenever `phone` changes (a new number always re-verifies).
   phoneVerifiedAt DateTime?
@@ -318,6 +375,12 @@ model User {
   verifiedPhones           VerifiedPhone[]
   emailLogs                EmailLog[]
   passwordResetTokens      PasswordResetToken[]
+  ticketsAsCustomer        Ticket[]                  @relation("TicketCustomer")
+  ticketsAssigned          Ticket[]                  @relation("TicketAssignee")
+  ticketsResolved          Ticket[]                  @relation("TicketResolvedBy")
+  ticketMessages           TicketMessage[]           @relation("TicketMessageAuthor")
+  customerNotesReceived    CustomerNote[]            @relation("CustomerNoteCustomer")
+  customerNotesAuthored    CustomerNote[]            @relation("CustomerNoteAuthor")
 
   @@map("users")
 }
@@ -811,6 +874,7 @@ model Order {
   emailLogs           EmailLog[]
   invoices            Invoice[]
   refunds             Refund[]
+  tickets             Ticket[]
 
   @@index([userId])
   @@index([status])
@@ -1536,6 +1600,7 @@ model EmailLog {
   id                String      @id @default(cuid())
   orderId           String?
   userId            String?
+  ticketId          String?
   toEmail           String
   notificationType  String
   subject           String
@@ -1548,11 +1613,143 @@ model EmailLog {
   lastRetriedAt     DateTime?
   createdAt         DateTime    @default(now())
 
-  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  user  User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  order  Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  ticket Ticket? @relation(fields: [ticketId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@index([status])
   @@index([createdAt])
+  @@index([ticketId])
   @@map("email_logs")
+}
+
+// ---------- Customer Care ----------
+
+/// Sequential per-calendar-year ticket numbering — identical race-safe upsert pattern to
+/// InvoiceCounter (see generateInvoiceNumber in src/lib/orders/invoicing.ts).
+model TicketCounter {
+  id         String   @id @default(cuid())
+  year       String   @unique
+  lastNumber Int      @default(0)
+  updatedAt  DateTime @updatedAt
+
+  @@map("ticket_counters")
+}
+
+/// Customer Care helpdesk ticket. Covers manually-opened tickets, contact-form submissions,
+/// and tickets auto-created from the cancellation/return/refund flows (see `source`). Guest
+/// tickets (contact form, no account) have no `customerId` — mirrors Order.userId/guestEmail/guestPhone.
+model Ticket {
+  id           String         @id @default(cuid())
+  ticketNumber String         @unique
+  category     TicketCategory
+  subcategory  String?
+  status       TicketStatus   @default(NEW)
+  priority     TicketPriority @default(NORMAL)
+
+  customerId String?
+  guestName  String?
+  guestEmail String?
+  guestPhone String?
+
+  orderId String?
+
+  subject     String
+  description String @db.Text
+
+  /// Bare id (no FK) — matches the existing cancelledById/reliabilityOverrideBy convention.
+  assignedToId String?
+  assignedAt   DateTime?
+
+  /// Stamped on the first customer-visible (non-internal) EMPLOYEE reply — see TicketMessage.
+  firstRespondedAt DateTime?
+  resolvedAt       DateTime?
+  resolvedById     String?
+  closedAt         DateTime?
+
+  /// MANUAL | CONTACT_FORM | ORDER_CANCELLATION | RETURN_REQUEST | REFUND — provenance of
+  /// auto-created tickets, so dashboard/reports can distinguish system-originated volume.
+  source String @default("MANUAL")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer   User?           @relation("TicketCustomer", fields: [customerId], references: [id])
+  assignedTo User?           @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  resolvedBy User?           @relation("TicketResolvedBy", fields: [resolvedById], references: [id])
+  order      Order?          @relation(fields: [orderId], references: [id])
+  messages   TicketMessage[]
+  emailLogs  EmailLog[]
+
+  @@index([status])
+  @@index([priority])
+  @@index([category])
+  @@index([assignedToId])
+  @@index([customerId])
+  @@index([orderId])
+  @@index([createdAt])
+  @@map("tickets")
+}
+
+/// One row per thread entry: a customer's original/follow-up message, an employee's reply,
+/// an employee's internal note, or a system-generated log entry (status/assignment change,
+/// or a cross-linked event like "refund processed"). `isInternal` is the single gate that
+/// must be checked everywhere a ticket is rendered on a customer-facing surface — internal
+/// notes and system log entries are never emailed/shown to the customer.
+model TicketMessage {
+  id         String                  @id @default(cuid())
+  ticketId   String
+  authorType TicketMessageAuthorType
+  /// Set only for EMPLOYEE messages — the staff User who wrote it.
+  authorId   String?
+  isInternal Boolean                 @default(false)
+  body       String                  @db.Text
+  /// Customer-uploaded photos/videos (damaged/wrong/defective/packaging issues) — same
+  /// String[] URL-array pattern as Return.images.
+  attachments String[]               @default([])
+  /// True once this message was actually emailed to the customer (see sendTicketEmail()).
+  emailSent  Boolean                 @default(false)
+  createdAt  DateTime                @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User?  @relation("TicketMessageAuthor", fields: [authorId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_messages")
+}
+
+/// Reusable, manager-editable canned replies for common ticket categories (order confirmation,
+/// delayed, shipped, cancellation confirmation, return approved/rejected, refund
+/// initiated/completed, delivery issue, general response). Distinct from NotificationTemplate,
+/// which drives fixed-key transactional system emails against order data — these are freeform
+/// staff-authored snippets inserted into a reply compose box and edited before sending.
+/// Append-only internal note log on a customer profile — distinct from User.notes (a single
+/// pinned/overwritable summary field, still used for that purpose). One row per note, never
+/// edited or deleted, so multiple employees build a real history over time instead of clobbering
+/// each other's write. Never shown to the customer.
+model CustomerNote {
+  id         String   @id @default(cuid())
+  customerId String
+  authorId   String?
+  body       String   @db.Text
+  createdAt  DateTime @default(now())
+
+  customer User  @relation("CustomerNoteCustomer", fields: [customerId], references: [id], onDelete: Cascade)
+  author   User? @relation("CustomerNoteAuthor", fields: [authorId], references: [id])
+
+  @@index([customerId, createdAt])
+  @@map("customer_notes")
+}
+
+model TicketReplyTemplate {
+  id        String          @id @default(cuid())
+  name      String
+  category  TicketCategory?
+  body      String          @db.Text
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@map("ticket_reply_templates")
 }

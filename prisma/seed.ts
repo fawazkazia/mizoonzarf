@@ -1441,11 +1441,47 @@ async function main() {
     },
   });
 
+  console.log("Creating Customer Care manager...");
+  const careManagerEmail = "care@mizoonzarf.in";
+  const careManagerPassword = "Care@12345";
+  await db.user.upsert({
+    where: { email: careManagerEmail },
+    update: {},
+    create: {
+      name: "Customer Care Manager",
+      email: careManagerEmail,
+      passwordHash: await bcrypt.hash(careManagerPassword, 10),
+      role: "CUSTOMER_SUPPORT_MANAGER",
+    },
+  });
+
+  console.log("Creating ticket reply templates...");
+  const ticketReplyTemplates: { name: string; category: string | null; body: string }[] = [
+    { name: "Order Confirmation", category: "ORDER_ISSUE", body: "Hi {{customer_name}}, thanks for reaching out — your order {{order_number}} is confirmed and being processed. We'll update you as soon as it ships." },
+    { name: "Order Delayed", category: "DELAYED_DELIVERY", body: "Hi {{customer_name}}, we're sorry for the delay on order {{order_number}}. We're following up with our courier partner and will share an updated delivery estimate shortly." },
+    { name: "Order Shipped", category: "DELIVERY_ISSUE", body: "Hi {{customer_name}}, good news — order {{order_number}} has shipped and is on its way to you." },
+    { name: "Cancellation Confirmation", category: "ORDER_CANCELLATION", body: "Hi {{customer_name}}, your order {{order_number}} has been cancelled as requested. Any payment made will be refunded to your original payment method." },
+    { name: "Return Approved", category: "RETURN_REQUEST", body: "Hi {{customer_name}}, your return request for order {{order_number}} has been approved. Please keep the item ready for pickup — we'll be in touch with the schedule." },
+    { name: "Return Rejected", category: "RETURN_REQUEST", body: "Hi {{customer_name}}, after review, we're unable to approve the return for order {{order_number}}. Please reply to this ticket if you'd like more details." },
+    { name: "Refund Initiated", category: "REFUND_ISSUE", body: "Hi {{customer_name}}, your refund for order {{order_number}} has been initiated and should reflect in your original payment method within 5-7 business days." },
+    { name: "Refund Completed", category: "REFUND_ISSUE", body: "Hi {{customer_name}}, your refund for order {{order_number}} has been completed. Please let us know if you don't see it reflected within a few days." },
+    { name: "Delivery Issue", category: "DELIVERY_ISSUE", body: "Hi {{customer_name}}, we're sorry to hear about the delivery issue with order {{order_number}}. We're looking into this with our courier partner and will update you shortly." },
+    { name: "General Response", category: null, body: "Hi {{customer_name}}, thanks for reaching out. We're looking into this and will get back to you shortly." },
+  ];
+  for (const t of ticketReplyTemplates) {
+    const existing = await db.ticketReplyTemplate.findFirst({ where: { name: t.name } });
+    if (!existing) await db.ticketReplyTemplate.create({ data: t as never });
+  }
+
   console.log("Seed complete.");
   console.log("");
   console.log("Admin login  ->  /login");
   console.log(`  email:    ${adminEmail}`);
   console.log(`  password: ${adminPassword}`);
+  console.log("");
+  console.log("Customer Care manager login  ->  /login");
+  console.log(`  email:    ${careManagerEmail}`);
+  console.log(`  password: ${careManagerPassword}`);
 }
 
 main()

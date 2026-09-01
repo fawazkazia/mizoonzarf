@@ -6,6 +6,7 @@ import { createNotification } from "@/lib/notifications/inapp";
 import { reverseLoyaltyPoints } from "@/lib/loyalty";
 import { recomputeUserReliability } from "@/lib/risk/recomputeReliability";
 import { processRefund } from "@/lib/finance/refunds";
+import { createTicketFromSystemEvent } from "@/lib/customer-care/auto-create";
 import type { OrderStatus } from "@/generated/prisma/client";
 
 /** Statuses a customer (or staff, via the same guard) can still cancel from — once an order
@@ -58,6 +59,19 @@ export async function cancelOrder(params: { orderId: string; reason: string; can
 
   if (!processed) return { ok: false, reason: "NOT_CANCELLABLE" };
 
+  // Surfaces the cancellation in the Customer Care queue. Best-effort/non-blocking — a ticket
+  // is a convenience for support staff, not part of the cancellation's correctness.
+  await createTicketFromSystemEvent({
+    category: "ORDER_CANCELLATION",
+    source: "ORDER_CANCELLATION",
+    orderId,
+    customerId: order.userId,
+    guestEmail: order.guestEmail,
+    guestPhone: order.guestPhone,
+    subject: `Order cancelled — ${order.orderNumber}`,
+    description: reason,
+  });
+
   // Prepaid orders that were actually charged get refunded through the same gateway/ledger path
   // as every other refund in the app. COD, and prepaid orders that never reached PAID, have
   // nothing to reverse. A gateway failure here must not undo the cancellation that already
@@ -70,6 +84,9 @@ export async function cancelOrder(params: { orderId: string; reason: string; can
         reason: `Order cancelled: ${reason}`,
         requestedById: cancelledById,
         orderStatus: "CANCELLED",
+        // The cancellation ticket above already covers this event — a prepaid refund
+        // triggered by the same cancellation shouldn't spawn a second, duplicate ticket.
+        skipTicketCreation: true,
       });
     } catch (err) {
       console.error("[cancel-order] refund failed", err);

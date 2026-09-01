@@ -4,6 +4,7 @@ import { getPaymentProvider } from "@/lib/payments/registry";
 import { createNotification } from "@/lib/notifications/inapp";
 import { reverseLoyaltyPoints } from "@/lib/loyalty";
 import { postOrderRefundEntry } from "@/lib/finance/ledger";
+import { createTicketFromSystemEvent, appendSystemMessageToTicket } from "@/lib/customer-care/auto-create";
 
 /**
  * The single place both refund paths in this app route through — previously
@@ -30,6 +31,9 @@ export async function processRefund(params: {
    * a cancelled-then-refunded order should stay CANCELLED, not flip to a distinct REFUNDED status.
    */
   orderStatus?: "REFUNDED" | "CANCELLED";
+  /** Set by cancelOrder() — that flow already auto-creates its own ORDER_CANCELLATION ticket for
+   * this event, so the standalone-refund auto-ticket below must not also fire for it. */
+  skipTicketCreation?: boolean;
 }) {
   const order = await db.order.findUniqueOrThrow({ where: { id: params.orderId }, include: { payments: true } });
   const targetStatus = params.orderStatus ?? "REFUNDED";
@@ -76,6 +80,30 @@ export async function processRefund(params: {
       title: `Order ${order.orderNumber}`,
       body: "Your payment has been refunded.",
       link: `/account/orders/${params.orderId}`,
+    });
+  }
+
+  // A return-driven refund already has a RETURN_REQUEST ticket from the original request —
+  // log this event there instead of opening a second ticket. A standalone admin refund (no
+  // return, e.g. "Refund Payment" on an order) gets its own new ticket so it's tracked in the
+  // Customer Care queue too. Both best-effort/non-blocking — a ticket is a convenience, not
+  // part of the refund's correctness.
+  if (params.returnId) {
+    await appendSystemMessageToTicket({
+      orderId: params.orderId,
+      category: "RETURN_REQUEST",
+      body: `Refund of ${params.amount} processed for this return.`,
+    });
+  } else if (!params.skipTicketCreation) {
+    await createTicketFromSystemEvent({
+      category: "REFUND_ISSUE",
+      source: "REFUND",
+      orderId: params.orderId,
+      customerId: order.userId,
+      guestEmail: order.guestEmail,
+      guestPhone: order.guestPhone,
+      subject: `Refund processed — ${order.orderNumber}`,
+      description: params.reason,
     });
   }
 

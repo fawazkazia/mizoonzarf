@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { Search, Menu, ArrowLeft, Sun, Moon, UserCircle } from "lucide-react";
+import { Search, Menu, ArrowLeft, Sun, Moon, UserCircle, Headset } from "lucide-react";
 import { AdminMobileNav } from "./AdminMobileNav";
 import { useAdminTheme } from "./AdminThemeProvider";
+import { CUSTOMER_CARE_ROLES } from "@/lib/admin-permissions";
 
 interface SearchResults {
   products: { id: string; name: string; slug: string }[];
@@ -25,6 +26,7 @@ export function AdminTopbar({ name, role }: { name: string; role: string }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const isRoot = pathname === "/admin";
   const { theme, toggle } = useAdminTheme();
+  const canSeeCustomerCare = CUSTOMER_CARE_ROLES.includes(role as never);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -148,6 +150,15 @@ export function AdminTopbar({ name, role }: { name: string; role: string }) {
       </div>
 
       <div className="flex shrink-0 items-center gap-4">
+        {canSeeCustomerCare && (
+          <Link
+            href="/admin/customer-care"
+            className="flex items-center gap-2 border border-ink bg-ink px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-paper transition-colors hover:bg-ink-soft"
+          >
+            <Headset size={14} />
+            <span className="hidden sm:inline">Customer Care</span>
+          </Link>
+        )}
         <button
           onClick={toggle}
           aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}

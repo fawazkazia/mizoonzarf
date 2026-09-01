@@ -78,6 +78,12 @@ const DEFAULT_TEMPLATES: Record<string, Partial<Record<"EMAIL" | "SMS", Rendered
   contact_form_submission: {
     EMAIL: { subject: "New contact form message from {{customer_name}}", body: "From: {{customer_name}} ({{customer_email}})\n\n{{message}}" },
   },
+  ticket_created: {
+    EMAIL: { subject: "We've received your request — {{ticket_number}}", body: "Hi {{customer_name}}, we've opened ticket {{ticket_number}} for your request: \"{{ticket_subject}}\". Our support team will get back to you shortly." },
+  },
+  ticket_resolved: {
+    EMAIL: { subject: "Your ticket {{ticket_number}} has been resolved", body: "Hi {{customer_name}}, your ticket {{ticket_number}} (\"{{ticket_subject}}\") has been marked resolved. If you still need help, just reply and we'll reopen it." },
+  },
   phone_verify_otp: {
     SMS: { body: "Your verification code is {{code}}. It expires in {{minutes}} minutes. Don't share this code with anyone." },
   },

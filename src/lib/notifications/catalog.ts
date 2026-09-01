@@ -10,7 +10,7 @@ export interface EmailNotificationDef {
   key: string;
   label: string;
   description: string;
-  group: "order" | "return" | "tracking";
+  group: "order" | "return" | "tracking" | "support";
   /** Sample values used to render a Preview / test send without a real order. */
   sampleVariables: Record<string, string | number>;
 }
@@ -149,6 +149,20 @@ export const EMAIL_NOTIFICATION_CATALOG: EmailNotificationDef[] = [
       tracking_number: "BD1234567890",
       expected_delivery_date: "3 Sep 2026",
     },
+  },
+  {
+    key: "ticket_created",
+    label: "Support Ticket Created",
+    description: "Sent when a new Customer Care ticket is opened for a customer.",
+    group: "support",
+    sampleVariables: { customer_name: "Aisha Khan", ticket_number: "TKT-2026-000123", ticket_subject: "Order not delivered yet" },
+  },
+  {
+    key: "ticket_resolved",
+    label: "Support Ticket Resolved",
+    description: "Sent when a Customer Care ticket is marked Resolved.",
+    group: "support",
+    sampleVariables: { customer_name: "Aisha Khan", ticket_number: "TKT-2026-000123", ticket_subject: "Order not delivered yet" },
   },
 ];
 
