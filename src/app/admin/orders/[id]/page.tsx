@@ -40,6 +40,13 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
 
   const address = order.shippingAddress as { fullName: string; phone: string; line1: string; line2?: string; city: string; country: string };
 
+  const cancelledBy = order.cancelledById
+    ? await db.user.findUnique({ where: { id: order.cancelledById }, select: { name: true, email: true, role: true } })
+    : null;
+  const cancelledByLabel = cancelledBy
+    ? `${cancelledBy.name ?? cancelledBy.email} (${order.cancelledById === order.userId ? "Customer" : cancelledBy.role.replace(/_/g, " ")})`
+    : null;
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -58,6 +65,25 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
       </div>
 
       <OrderTimeline status={order.status} paymentStatus={order.paymentStatus} gradient={gradient} accent={accent} />
+
+      {order.cancelledAt && (
+        <div className="border border-sale/30 bg-sale/5 p-4 text-sm">
+          <p className="font-medium text-sale">Order Cancelled</p>
+          <p className="mt-1 text-ink-soft">
+            {cancelledByLabel && (
+              <>
+                By <span className="text-ink">{cancelledByLabel}</span> on{" "}
+              </>
+            )}
+            {order.cancelledAt.toLocaleString()}
+          </p>
+          {order.cancellationReason && (
+            <p className="mt-1 text-ink-soft">
+              Reason: <span className="text-ink">{order.cancellationReason}</span>
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="flex flex-col gap-6">

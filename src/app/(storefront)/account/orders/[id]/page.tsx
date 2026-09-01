@@ -8,7 +8,9 @@ import { formatINR } from "@/lib/currency";
 import { Img } from "@/components/ui/ArtImage";
 import { OrderTimeline } from "@/components/account/OrderTimeline";
 import { ReturnItemAction } from "@/components/account/ReturnItemAction";
+import { CancelOrderAction } from "@/components/account/CancelOrderAction";
 import { CompletePaymentButton } from "@/components/orders/CompletePaymentButton";
+import { CANCELLABLE_ORDER_STATUSES } from "@/lib/orders/cancel";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -57,6 +59,7 @@ export default async function OrderDetailPage({ params }: PageProps) {
   // normal happy path — only a prepaid method sitting at PENDING actually needs action.
   const paymentPending = order.paymentStatus === "PENDING" && order.paymentMethod !== "COD";
   const paymentFailed = order.paymentStatus === "FAILED";
+  const canCancel = CANCELLABLE_ORDER_STATUSES.includes(order.status);
 
   return (
     <div>
@@ -65,10 +68,17 @@ export default async function OrderDetailPage({ params }: PageProps) {
         Back to Orders
       </Link>
 
-      <h1 className="font-display text-2xl sm:text-3xl">Order {order.orderNumber}</h1>
-      <p className="mt-1.5 mb-6 text-sm text-ink-soft">
-        Placed on {order.createdAt.toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" })}
-      </p>
+      <div className="mb-6">
+        <h1 className="font-display text-2xl sm:text-3xl">Order {order.orderNumber}</h1>
+        <p className="mt-1.5 text-sm text-ink-soft">
+          Placed on {order.createdAt.toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" })}
+        </p>
+        {canCancel && (
+          <div className="mt-3">
+            <CancelOrderAction orderId={order.id} orderNumber={order.orderNumber} canCancel={canCancel} />
+          </div>
+        )}
+      </div>
 
       <div className="rounded-2xl border border-line bg-paper-raise p-4 shadow-[var(--shadow-lift)] sm:p-6">
         <OrderTimeline
@@ -170,7 +180,12 @@ export default async function OrderDetailPage({ params }: PageProps) {
             </div>
           </div>
 
-          {paymentFailed ? (
+          {order.status === "CANCELLED" ? (
+            <div className="flex items-center gap-3 bg-sale/10 px-5 py-4 text-sm font-medium text-sale sm:px-6">
+              <XCircle size={18} className="shrink-0" strokeWidth={1.75} />
+              This order was cancelled{order.cancellationReason ? ` — ${order.cancellationReason}` : ""}.
+            </div>
+          ) : paymentFailed ? (
             <div className="flex items-center gap-3 bg-sale/10 px-5 py-4 text-sm font-medium text-sale sm:px-6">
               <XCircle size={18} className="shrink-0" strokeWidth={1.75} />
               Payment failed — this order was cancelled.

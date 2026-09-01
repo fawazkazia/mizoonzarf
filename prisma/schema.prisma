@@ -783,6 +783,15 @@ model Order {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
+  /// Set only by the customer self-cancel flow (src/lib/orders/cancel.ts) — an admin manually
+  /// setting status to CANCELLED via the generic status updater leaves these null.
+  cancelledAt        DateTime?
+  cancellationReason String?
+  /// Id of whoever cancelled the order — a bare reference (no FK), matching the existing
+  /// User.reliabilityOverrideBy convention, since we never want cancelling-user deletion to
+  /// cascade into order history.
+  cancelledById      String?
+
   /// Fraud-risk snapshot computed at checkout — see src/lib/risk/computeOrderRisk.ts. Never auto-rejects; admins act on it.
   riskLevel      RiskLevel @default(NORMAL)
   riskScore      Int       @default(0)

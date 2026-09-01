@@ -24,8 +24,15 @@ export async function processRefund(params: {
   reason: string;
   cogsReversalAmount?: number;
   requestedById: string;
+  /**
+   * The order's status once the refund is recorded — defaults to "REFUNDED" (the return/admin-
+   * refund flows' terminal state). The order-cancellation flow passes "CANCELLED" instead, since
+   * a cancelled-then-refunded order should stay CANCELLED, not flip to a distinct REFUNDED status.
+   */
+  orderStatus?: "REFUNDED" | "CANCELLED";
 }) {
   const order = await db.order.findUniqueOrThrow({ where: { id: params.orderId }, include: { payments: true } });
+  const targetStatus = params.orderStatus ?? "REFUNDED";
 
   const provider = getPaymentProvider(order.paymentMethod);
   const payment = order.payments.find((p) => p.status === "PAID");
@@ -37,8 +44,12 @@ export async function processRefund(params: {
 
   const refund = await db.$transaction(async (tx) => {
     await tx.payment.update({ where: { id: payment.id }, data: { status: result.status, rawResponse: result.raw as never } });
-    await tx.order.update({ where: { id: params.orderId }, data: { paymentStatus: result.status, status: "REFUNDED" } });
-    await tx.orderStatusHistory.create({ data: { orderId: params.orderId, status: "REFUNDED", note: params.reason } });
+    await tx.order.update({ where: { id: params.orderId }, data: { paymentStatus: result.status, status: targetStatus } });
+    // Skip a redundant history row if the caller already recorded this exact status transition
+    // (the cancel flow sets status=CANCELLED itself before calling processRefund for the payment side).
+    if (order.status !== targetStatus) {
+      await tx.orderStatusHistory.create({ data: { orderId: params.orderId, status: targetStatus, note: params.reason } });
+    }
     await reverseLoyaltyPoints(tx, params.orderId, order.orderNumber);
     if (params.returnId) {
       await tx.return.update({ where: { id: params.returnId }, data: { status: "REFUNDED", refundAmount: params.amount } });
