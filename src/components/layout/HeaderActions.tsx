@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { Search, Heart, User, ShoppingBag, Package, ChevronDown } from "lucide-react";
+import { Search, Heart, User, ShoppingBag, Package, ChevronDown, Truck } from "lucide-react";
 import { IconButton } from "@/components/ui/IconButton";
 import { CartPopover } from "@/components/cart/CartPopover";
 import { useCartStore, cartItemCount } from "@/stores/cart-store";
@@ -78,6 +78,9 @@ function AccountMenu() {
           <Link href="/account/orders" onClick={() => setOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-paper-dim">
             <Package size={14} /> Track My Orders
           </Link>
+          <Link href="/track-order" onClick={() => setOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-paper-dim">
+            <Truck size={14} /> Track Your Order
+          </Link>
           <Link href="/account/wishlist" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-sm hover:bg-paper-dim">
             Wishlist
           </Link>
@@ -88,6 +91,45 @@ function AccountMenu() {
           >
             Sign Out
           </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GuestAccountMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useClickOutside(ref, () => setOpen(false), open);
+
+  return (
+    <div ref={ref} className="relative hidden sm:block">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Account menu"
+        title="Account"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="relative inline-flex h-11 items-center gap-0.5 px-1 text-ink transition-colors duration-[var(--dur-1)] hover:text-ink-mute"
+      >
+        <User size={19} strokeWidth={1.5} />
+        <ChevronDown size={13} strokeWidth={1.75} className={cn("transition-transform duration-[var(--dur-1)]", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-[var(--z-panel)] mt-2 w-48 border border-line bg-paper-raise py-1.5 shadow-[var(--shadow-panel)]"
+        >
+          <Link href="/login" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-sm hover:bg-paper-dim">
+            Sign In
+          </Link>
+          <Link href="/register" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-sm hover:bg-paper-dim">
+            Create Account
+          </Link>
+          <Link href="/track-order" onClick={() => setOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-paper-dim">
+            <Truck size={14} /> Track Your Order
+          </Link>
         </div>
       )}
     </div>
@@ -112,13 +154,7 @@ export function HeaderActions({ isSignedIn }: { isSignedIn: boolean }) {
       <LinkIcon href="/account/wishlist" label="Wishlist" badge={wishlistCount} className="hidden sm:inline-flex">
         <Heart size={19} strokeWidth={1.5} />
       </LinkIcon>
-      {isSignedIn ? (
-        <AccountMenu />
-      ) : (
-        <LinkIcon href="/login" label="Account" className="hidden sm:inline-flex">
-          <User size={19} strokeWidth={1.5} />
-        </LinkIcon>
-      )}
+      {isSignedIn ? <AccountMenu /> : <GuestAccountMenu />}
       <div ref={cartWrapperRef} className="relative">
         <IconButton
           label="Bag"
