@@ -24,10 +24,14 @@ export default async function ShippingPage() {
             {settings.shipping.expressDays} — {formatINR(settings.shipping.expressFee)}
           </p>
         </div>
-        <p className="text-sm">
-          Orders are processed within 1 business day. You&apos;ll receive a shipping confirmation with tracking details
-          as soon as your order leaves our warehouse. Delivery times may vary for remote areas.
-        </p>
+        {settings.legal.shippingPolicy
+          .split("\n\n")
+          .filter(Boolean)
+          .map((p, i) => (
+            <p key={i} className="text-sm">
+              {p}
+            </p>
+          ))}
       </div>
     </Container>
   );

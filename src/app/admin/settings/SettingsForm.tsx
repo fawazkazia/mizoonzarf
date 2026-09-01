@@ -43,6 +43,8 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
   const [sellerLegalName, setSellerLegalName] = useState(initial.gst.sellerLegalName);
   const [sellerAddress, setSellerAddress] = useState(initial.gst.sellerAddress);
   const [cancellationPolicy, setCancellationPolicy] = useState(initial.legal.cancellationPolicy);
+  const [returnPolicy, setReturnPolicy] = useState(initial.legal.returnPolicy);
+  const [shippingPolicy, setShippingPolicy] = useState(initial.legal.shippingPolicy);
   const [whatsappNumber, setWhatsappNumber] = useState(initial.whatsappNumber);
   const [supportEmail, setSupportEmail] = useState(initial.supportEmail);
   const [instagram, setInstagram] = useState(initial.socialLinks.instagram ?? "");
@@ -117,7 +119,7 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
       taxPercent,
       taxInclusive,
       gst: { sellerGstin, sellerState, sellerLegalName, sellerAddress },
-      legal: { cancellationPolicy },
+      legal: { cancellationPolicy, returnPolicy, shippingPolicy },
       whatsappNumber,
       supportEmail,
       socialLinks: { instagram, facebook, tiktok, x },
@@ -317,6 +319,16 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
         <div className="sm:col-span-2">
           <Field label="Cancellation Policy" hint="Shown at /cancellation. Edit this with your actual policy before launch.">
             <Textarea rows={5} value={cancellationPolicy} onChange={(e) => setCancellationPolicy(e.target.value)} />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Return &amp; Refund Policy" hint="Shown at /returns. Separate paragraphs with a blank line.">
+            <Textarea rows={7} value={returnPolicy} onChange={(e) => setReturnPolicy(e.target.value)} />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Shipping Policy" hint="Shown at /shipping, below the delivery fee cards.">
+            <Textarea rows={3} value={shippingPolicy} onChange={(e) => setShippingPolicy(e.target.value)} />
           </Field>
         </div>
       </Fieldset>

@@ -22,6 +22,8 @@ export interface SiteSettings {
   /** Admin-editable legal copy for pages that have no other content source. */
   legal: {
     cancellationPolicy: string;
+    returnPolicy: string;
+    shippingPolicy: string;
   };
   /** The two full-width promo strips rendered site-wide just below the header. */
   promoStrips: {
@@ -163,6 +165,16 @@ const DEFAULT_SETTINGS: SiteSettings = {
       "You can cancel an order for free any time before it has been packed for shipping — go to Order History and select Cancel Order, " +
       "or contact us and we'll cancel it for you. Once an order has shipped, it can no longer be cancelled; you're welcome to refuse " +
       "delivery or request a return instead. Refunds for cancelled orders are credited to the original payment method within 5-7 business days.",
+    returnPolicy:
+      "We want you to love what you ordered. If something isn't right, you can request a return within 14 days of delivery.\n\n" +
+      "1. Sign in and open the order from your Order History.\n\n" +
+      "2. Select the item(s) you'd like to return and the reason.\n\n" +
+      "3. We'll confirm pickup or drop-off details by email/WhatsApp.\n\n" +
+      "4. Once received and inspected, your refund is processed to your original payment method.\n\n" +
+      "Items must be unworn, unwashed, and in their original packaging with tags attached. Final sale items are not eligible for return.",
+    shippingPolicy:
+      "Orders are processed within 1 business day. You'll receive a shipping confirmation with tracking details as soon as your " +
+      "order leaves our warehouse. Delivery times may vary for remote areas.",
   },
   promoStrips: {
     codeBanner: {
