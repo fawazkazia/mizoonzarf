@@ -24,6 +24,9 @@ export const settingsInputSchema = z.object({
     returnPolicy: z.string(),
     shippingPolicy: z.string(),
     termsAndConditions: z.string(),
+    privacyPolicy: z.string(),
+    aboutStory: z.string(),
+    careersInfo: z.string(),
   }),
   promoStrips: z.object({
     codeBanner: z.object({

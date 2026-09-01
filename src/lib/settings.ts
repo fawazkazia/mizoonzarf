@@ -25,6 +25,11 @@ export interface SiteSettings {
     returnPolicy: string;
     shippingPolicy: string;
     termsAndConditions: string;
+    privacyPolicy: string;
+    /** Body copy on /about, below the intro line (which stays footer.about, shared with the site footer/meta description). */
+    aboutStory: string;
+    /** Body copy on /careers, above the "email us" line. */
+    careersInfo: string;
   };
   /** The two full-width promo strips rendered site-wide just below the header. */
   promoStrips: {
@@ -180,6 +185,17 @@ const DEFAULT_SETTINGS: SiteSettings = {
       "By using the MIZOON ZARF website, you agree to these terms. Prices are shown in INR and are inclusive/exclusive of GST as noted at checkout.\n\n" +
       "We reserve the right to cancel orders in cases of pricing errors, suspected fraud, or stock unavailability — you'll be notified and refunded in full.\n\n" +
       "All content on this site, including product images, text, and branding, is the property of MIZOON ZARF and may not be reproduced without permission.",
+    privacyPolicy:
+      "MIZOON ZARF collects the information you provide when creating an account, placing an order, or contacting us — including your " +
+      "name, email, phone number, and delivery address — solely to process orders, provide customer support, and improve your shopping experience.\n\n" +
+      "We never sell your personal information. Payment details are processed by our payment partners and are never stored on our servers.\n\n" +
+      "You can request access to, correction of, or deletion of your personal data at any time by contacting info@mizoonzarf.in.",
+    aboutStory:
+      "MIZOON ZARF was built on a simple idea: premium fashion, fragrance and fine accessories should be effortless to discover and a " +
+      "pleasure to shop. From everyday essentials to statement pieces for life's biggest moments, every collection is curated with care.\n\n" +
+      "We work with trusted partners across the region to bring you an ever-evolving edit for men, women and children — backed by fast " +
+      "delivery and a team that's always happy to help.",
+    careersInfo: "We're always looking for passionate people to join our team. Send your resume and tell us what excites you about fashion retail.",
   },
   promoStrips: {
     codeBanner: {

@@ -46,6 +46,9 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
   const [returnPolicy, setReturnPolicy] = useState(initial.legal.returnPolicy);
   const [shippingPolicy, setShippingPolicy] = useState(initial.legal.shippingPolicy);
   const [termsAndConditions, setTermsAndConditions] = useState(initial.legal.termsAndConditions);
+  const [privacyPolicy, setPrivacyPolicy] = useState(initial.legal.privacyPolicy);
+  const [aboutStory, setAboutStory] = useState(initial.legal.aboutStory);
+  const [careersInfo, setCareersInfo] = useState(initial.legal.careersInfo);
   const [whatsappNumber, setWhatsappNumber] = useState(initial.whatsappNumber);
   const [supportEmail, setSupportEmail] = useState(initial.supportEmail);
   const [instagram, setInstagram] = useState(initial.socialLinks.instagram ?? "");
@@ -120,7 +123,7 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
       taxPercent,
       taxInclusive,
       gst: { sellerGstin, sellerState, sellerLegalName, sellerAddress },
-      legal: { cancellationPolicy, returnPolicy, shippingPolicy, termsAndConditions },
+      legal: { cancellationPolicy, returnPolicy, shippingPolicy, termsAndConditions, privacyPolicy, aboutStory, careersInfo },
       whatsappNumber,
       supportEmail,
       socialLinks: { instagram, facebook, tiktok, x },
@@ -335,6 +338,24 @@ export function SettingsForm({ initial }: { initial: SiteSettings }) {
         <div className="sm:col-span-2">
           <Field label="Terms &amp; Conditions" hint="Shown at /terms. Customers must agree to this when creating an account.">
             <Textarea rows={7} value={termsAndConditions} onChange={(e) => setTermsAndConditions(e.target.value)} />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Privacy Policy" hint="Shown at /privacy.">
+            <Textarea rows={7} value={privacyPolicy} onChange={(e) => setPrivacyPolicy(e.target.value)} />
+          </Field>
+        </div>
+      </Fieldset>
+
+      <Fieldset title="Company Pages">
+        <div className="sm:col-span-2">
+          <Field label="About Us Story" hint="Shown at /about, below the intro line (the intro is the &quot;About Text&quot; field under Footer).">
+            <Textarea rows={5} value={aboutStory} onChange={(e) => setAboutStory(e.target.value)} />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Careers" hint="Shown at /careers, above the &quot;email us&quot; line.">
+            <Textarea rows={3} value={careersInfo} onChange={(e) => setCareersInfo(e.target.value)} />
           </Field>
         </div>
       </Fieldset>

@@ -17,15 +17,14 @@ export default async function AboutPage() {
       </div>
       <Container className="mx-auto max-w-2xl py-16 text-ink-soft">
         <p className="text-lg leading-relaxed">{settings.footer.about}</p>
-        <p className="mt-6 leading-relaxed">
-          {settings.brandName} was built on a simple idea: premium fashion, fragrance and fine accessories should be
-          effortless to discover and a pleasure to shop. From everyday essentials to statement pieces for life's
-          biggest moments, every collection is curated with care.
-        </p>
-        <p className="mt-6 leading-relaxed">
-          We work with trusted partners across the region to bring you an ever-evolving edit for men, women and
-          children — backed by fast delivery and a team that's always happy to help.
-        </p>
+        {settings.legal.aboutStory
+          .split("\n\n")
+          .filter(Boolean)
+          .map((p, i) => (
+            <p key={i} className="mt-6 leading-relaxed">
+              {p}
+            </p>
+          ))}
       </Container>
     </div>
   );
