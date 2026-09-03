@@ -1,7 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/admin-auth";
+import { requirePermission } from "@/lib/permissions/require-permission";
+import { logStaffActivity } from "@/lib/permissions/log-activity";
 import { productInputSchema, type ProductInput } from "@/lib/validation/admin-product";
 import { notifyWishlistersOfProduct } from "@/lib/notifications/inapp";
 import { getDefaultWarehouseId } from "@/lib/inventory/stock";
@@ -27,10 +28,13 @@ export interface ImportRowResult {
  * data it didn't explicitly provide.
  */
 export async function importProductRow(raw: ProductInput): Promise<ImportRowResult> {
-  await requireStaff();
   const input = productInputSchema.parse(raw);
 
+  // Which permission applies depends on whether this row creates or updates a product — resolve
+  // that first (a read-only SKU lookup) so the gate below checks the right one; createProduct()
+  // re-checks "products.add" internally when it runs, which is already satisfied by this gate.
   const existing = await db.product.findUnique({ where: { sku: input.sku } });
+  const session = await requirePermission(existing ? "products.edit" : "products.add");
   if (!existing) {
     const { id } = await createProduct(input);
     return { status: "created", productId: id, sku: input.sku };
@@ -200,6 +204,7 @@ export async function importProductRow(raw: ProductInput): Promise<ImportRowResu
     }
   }
 
+  await logStaffActivity({ actorId: session.user.id, action: "PRODUCT_IMPORTED", module: "products", entityType: "Product", entityId: id, after: { name: input.name, sku: input.sku } });
   revalidateProductPaths(input.slug);
   return { status: "updated", productId: id, sku: input.sku };
 }
@@ -207,7 +212,7 @@ export async function importProductRow(raw: ProductInput): Promise<ImportRowResu
 /** One batched, read-only lookup backing preview validation — resolves create-vs-update mode
  * per product group and flags any Variant SKU that already belongs to a *different* product. */
 export async function checkImportConflicts(productSkus: string[], variantSkus: string[]): Promise<ImportLookup> {
-  await requireStaff();
+  await requirePermission("products.view");
   const [products, variants] = await Promise.all([
     productSkus.length > 0 ? db.product.findMany({ where: { sku: { in: productSkus } }, select: { sku: true } }) : Promise.resolve([]),
     variantSkus.length > 0

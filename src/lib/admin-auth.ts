@@ -1,7 +1,9 @@
 import { auth } from "@/lib/auth";
 import type { Role } from "@/generated/prisma/client";
 
-export type AdminSession = { user: { id: string; name?: string | null; email?: string | null; role: string } };
+export type AdminSession = {
+  user: { id: string; name?: string | null; email?: string | null; role: string; permissions?: string[] };
+};
 
 /** Throws if the caller isn't signed in as staff — use at the top of every admin Server Action. */
 export async function requireStaff(): Promise<AdminSession> {

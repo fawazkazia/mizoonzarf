@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/admin-auth";
+import { requirePermission } from "@/lib/permissions/require-permission";
+import { logStaffActivity } from "@/lib/permissions/log-activity";
 import { collectionInputSchema, type CollectionInput } from "@/lib/validation/admin-collection";
 import { notifyAllCustomers } from "@/lib/notifications/inapp";
 
@@ -27,7 +28,7 @@ function revalidateCollectionPaths(slug?: string) {
 }
 
 export async function createCollection(raw: CollectionInput) {
-  await requireStaff();
+  const session = await requirePermission("products.manageCategories");
   const input = collectionInputSchema.parse(raw);
 
   const conflict = await db.collection.findUnique({ where: { slug: input.slug } });
@@ -46,12 +47,13 @@ export async function createCollection(raw: CollectionInput) {
     });
   }
 
+  await logStaffActivity({ actorId: session.user.id, action: "COLLECTION_CREATED", module: "products", entityType: "Collection", entityId: collection.id, after: { name: collection.name } });
   revalidateCollectionPaths(collection.slug);
   return { id: collection.id };
 }
 
 export async function updateCollection(id: string, raw: CollectionInput) {
-  await requireStaff();
+  const session = await requirePermission("products.manageCategories");
   const input = collectionInputSchema.parse(raw);
 
   const conflict = await db.collection.findFirst({ where: { slug: input.slug, id: { not: id } } });
@@ -61,12 +63,14 @@ export async function updateCollection(id: string, raw: CollectionInput) {
     where: { id },
     data: { ...normalize(input), products: { set: input.productIds.map((pid) => ({ id: pid })) } },
   });
+  await logStaffActivity({ actorId: session.user.id, action: "COLLECTION_UPDATED", module: "products", entityType: "Collection", entityId: id, after: { name: input.name } });
   revalidateCollectionPaths(input.slug);
   return { id };
 }
 
 export async function deleteCollection(id: string) {
-  await requireStaff();
-  await db.collection.delete({ where: { id } });
+  const session = await requirePermission("products.manageCategories");
+  const collection = await db.collection.delete({ where: { id } });
+  await logStaffActivity({ actorId: session.user.id, action: "COLLECTION_DELETED", module: "products", entityType: "Collection", entityId: id, before: { name: collection.name } });
   revalidateCollectionPaths();
 }

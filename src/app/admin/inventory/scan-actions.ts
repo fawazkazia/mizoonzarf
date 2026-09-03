@@ -1,13 +1,13 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/admin-auth";
+import { requirePermission } from "@/lib/permissions/require-permission";
 import { variantAttrs } from "@/lib/inventory/variant-attributes";
 import type { ScanContext } from "@/generated/prisma/client";
 
 /** Variants with no barcode yet, matching a product name or SKU — feeds the "Assign Barcode" flow when a scan comes back not-found. */
 export async function searchVariantsForAssignment(query: string) {
-  await requireStaff();
+  await requirePermission("inventory.view");
   const trimmed = query.trim();
   if (trimmed.length < 2) return [];
 
@@ -29,7 +29,7 @@ export async function searchVariantsForAssignment(query: string) {
 }
 
 export async function lookupBarcode(code: string, context: ScanContext = "GENERAL_SEARCH") {
-  const session = await requireStaff();
+  const session = await requirePermission("inventory.view");
   const trimmed = code.trim();
   if (!trimmed) throw new Error("Enter or scan a barcode.");
 

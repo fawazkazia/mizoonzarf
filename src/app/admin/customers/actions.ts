@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireStaff, requireSuperAdmin, requireRole } from "@/lib/admin-auth";
-import { CUSTOMER_CARE_MANAGER_ROLES } from "@/lib/admin-permissions";
+import { requireSuperAdmin } from "@/lib/admin-auth";
+import { requirePermission } from "@/lib/permissions/require-permission";
+import { logStaffActivity } from "@/lib/permissions/log-activity";
 import type { ReliabilityStatus } from "@/generated/prisma/client";
 
 export async function updateCustomerNotes(userId: string, notes: string) {
@@ -14,7 +15,7 @@ export async function updateCustomerNotes(userId: string, notes: string) {
 }
 
 export async function updateReliabilityOverride(userId: string, override: ReliabilityStatus | null, note: string) {
-  const session = await requireStaff();
+  const session = await requirePermission("customers.edit");
   await db.user.update({
     where: { id: userId },
     data: {
@@ -24,14 +25,16 @@ export async function updateReliabilityOverride(userId: string, override: Reliab
       reliabilityOverrideAt: override ? new Date() : null,
     },
   });
+  await logStaffActivity({ actorId: session.user.id, action: "CUSTOMER_RELIABILITY_OVERRIDDEN", module: "customers", entityType: "User", entityId: userId, after: { override, note } });
   revalidatePath(`/admin/customers/${userId}`);
   revalidatePath("/admin/customers");
 }
 
-/** Timestamped, append-only — never edits or removes a prior entry. Open to any staff member
- * (matches spec: "Add internal notes" is a base Customer Care Employee capability). */
+/** Timestamped, append-only — never edits or removes a prior entry. A base Customer Care
+ * Employee capability, gated on "customers.edit" — see the note on CUSTOMER_SUPPORT's default
+ * permission set in src/lib/permissions/legacy-role-map.ts for why that role still has it. */
 export async function addCustomerNote(userId: string, body: string) {
-  const session = await requireStaff();
+  const session = await requirePermission("customers.edit");
   if (!body.trim()) throw new Error("Note can't be empty.");
   await db.customerNote.create({ data: { customerId: userId, authorId: session.user.id, body: body.trim() } });
   revalidatePath(`/admin/customers/${userId}`);
@@ -44,12 +47,21 @@ const customerDetailsSchema = z.object({
   gender: z.string().optional(),
 });
 
-/** Personal-detail edits are permission-controlled (spec §15) — Super Admin and Customer Care
- * Manager only, not plain Customer Care staff. */
+/** Personal-detail edits are permission-controlled (spec §15) — gated on the granular
+ * "customers.edit" permission (Staff & Roles module) rather than a hardcoded role list, so a
+ * custom role can be given exactly this capability. Every account that previously qualified via
+ * CUSTOMER_CARE_MANAGER_ROLES (Super Admin, Customer Support Manager) already has this
+ * permission through its bridged system StaffRole — see src/lib/permissions/legacy-role-map.ts. */
 export async function updateCustomerDetails(userId: string, raw: z.infer<typeof customerDetailsSchema>) {
-  await requireRole(CUSTOMER_CARE_MANAGER_ROLES);
+  const session = await requirePermission("customers.edit");
   const input = customerDetailsSchema.parse(raw);
-  await db.user.update({
+
+  const before = await db.user.findUnique({
+    where: { id: userId },
+    select: { name: true, phone: true, dateOfBirth: true, gender: true },
+  });
+
+  const after = await db.user.update({
     where: { id: userId },
     data: {
       name: input.name || undefined,
@@ -57,7 +69,19 @@ export async function updateCustomerDetails(userId: string, raw: z.infer<typeof 
       dateOfBirth: input.dateOfBirth ? new Date(input.dateOfBirth) : null,
       gender: input.gender || null,
     },
+    select: { name: true, phone: true, dateOfBirth: true, gender: true },
   });
+
+  await logStaffActivity({
+    actorId: session.user.id,
+    action: "CUSTOMER_DETAILS_EDITED",
+    module: "customers",
+    entityType: "User",
+    entityId: userId,
+    before,
+    after,
+  });
+
   revalidatePath(`/admin/customers/${userId}`);
 }
 
@@ -74,20 +98,34 @@ const addressSchema = z.object({
 
 /** Upserts the customer's default address — same permission tier as updateCustomerDetails. */
 export async function updateCustomerAddress(userId: string, addressId: string | null, raw: z.infer<typeof addressSchema>) {
-  await requireRole(CUSTOMER_CARE_MANAGER_ROLES);
+  const session = await requirePermission("customers.edit");
   const input = addressSchema.parse(raw);
+
+  const before = addressId ? await db.address.findUnique({ where: { id: addressId } }) : null;
   if (addressId) {
     await db.address.update({ where: { id: addressId }, data: input });
   } else {
     await db.address.create({ data: { ...input, userId, isDefault: true } });
   }
+
+  await logStaffActivity({
+    actorId: session.user.id,
+    action: "CUSTOMER_ADDRESS_EDITED",
+    module: "customers",
+    entityType: "User",
+    entityId: userId,
+    before,
+    after: input,
+  });
+
   revalidatePath(`/admin/customers/${userId}`);
 }
 
-/** Any staff member can tag a customer — matches the pattern for the free-text notes above. */
+/** Same "customers.edit" tier as the free-text notes above. */
 export async function updateCustomerTags(userId: string, tags: string[]) {
-  await requireStaff();
+  const session = await requirePermission("customers.edit");
   await db.user.update({ where: { id: userId }, data: { tags } });
+  await logStaffActivity({ actorId: session.user.id, action: "CUSTOMER_TAGS_UPDATED", module: "customers", entityType: "User", entityId: userId, after: { tags } });
   revalidatePath(`/admin/customers/${userId}`);
   revalidatePath("/admin/customers");
 }

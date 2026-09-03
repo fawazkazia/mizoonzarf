@@ -2,20 +2,34 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/admin-auth";
+import { requirePermission } from "@/lib/permissions/require-permission";
+import { logStaffActivity } from "@/lib/permissions/log-activity";
 import { sendOrderEmail } from "@/lib/notifications/order-email";
 import { markOrderFailed, markOrderPaid } from "@/lib/orders/payment-events";
 import { applyOrderStatus } from "@/lib/orders/status";
 import { processRefund } from "@/lib/finance/refunds";
 import type { OrderStatus } from "@/generated/prisma/client";
 
+/** Gated on the granular "orders.changeStatus" permission (Staff & Roles module) rather than a
+ * bare requireStaff() — every role that could do this before (any staff member) still can via
+ * its bridged system StaffRole's default permission set; see src/lib/permissions/legacy-role-map.ts. */
 export async function updateOrderStatus(orderId: string, status: OrderStatus, note?: string) {
-  await requireStaff();
+  const session = await requirePermission("orders.changeStatus");
+  const before = await db.order.findUnique({ where: { id: orderId }, select: { status: true } });
   await applyOrderStatus(orderId, status, note);
+  await logStaffActivity({
+    actorId: session.user.id,
+    action: "ORDER_STATUS_CHANGED",
+    module: "orders",
+    entityType: "Order",
+    entityId: orderId,
+    before: { status: before?.status },
+    after: { status, note },
+  });
 }
 
 export async function updateShipment(orderId: string, data: { carrier?: string; trackingNumber?: string; estimatedDelivery?: string }) {
-  await requireStaff();
+  const session = await requirePermission("orders.edit");
 
   const existing = await db.shipment.findUnique({ where: { orderId } });
   const next = {
@@ -45,12 +59,13 @@ export async function updateShipment(orderId: string, data: { carrier?: string; 
     }
   }
 
+  await logStaffActivity({ actorId: session.user.id, action: "SHIPMENT_UPDATED", module: "orders", entityType: "Order", entityId: orderId, after: next });
   revalidatePath(`/admin/orders/${orderId}`);
   revalidatePath("/account/orders");
 }
 
 export async function updatePaymentStatus(orderId: string, paymentStatus: "PENDING" | "PAID" | "FAILED" | "REFUNDED" | "PARTIALLY_REFUNDED") {
-  await requireStaff();
+  const session = await requirePermission("orders.edit");
 
   const order = await db.order.findUnique({ where: { id: orderId } });
   if (!order) throw new Error("Order not found.");
@@ -69,11 +84,12 @@ export async function updatePaymentStatus(orderId: string, paymentStatus: "PENDI
     throw new Error("Use the Refund action for this payment method instead of setting status directly.");
   }
 
+  await logStaffActivity({ actorId: session.user.id, action: "PAYMENT_STATUS_CHANGED", module: "orders", entityType: "Order", entityId: orderId, before: { paymentStatus: order.paymentStatus }, after: { paymentStatus } });
   revalidatePath(`/admin/orders/${orderId}`);
 }
 
 export async function refundPayment(orderId: string) {
-  const session = await requireStaff();
+  const session = await requirePermission("orders.refund");
 
   const order = await db.order.findUnique({ where: { id: orderId } });
   if (!order) throw new Error("Order not found.");
@@ -83,6 +99,16 @@ export async function refundPayment(orderId: string) {
     amount: Number(order.total),
     reason: "Refunded by admin.",
     requestedById: session.user.id,
+  });
+
+  await logStaffActivity({
+    actorId: session.user.id,
+    action: "ORDER_REFUNDED",
+    module: "orders",
+    entityType: "Order",
+    entityId: orderId,
+    before: { paymentStatus: order.paymentStatus },
+    after: { amount: Number(order.total) },
   });
 
   revalidatePath(`/admin/orders/${orderId}`);

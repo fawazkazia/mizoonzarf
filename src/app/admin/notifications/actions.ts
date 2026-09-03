@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/admin-auth";
+import { requirePermission } from "@/lib/permissions/require-permission";
+import { logStaffActivity } from "@/lib/permissions/log-activity";
 import { getSettings } from "@/lib/settings";
 import { emailBrandingSchema, emailTemplateInputSchema, sendTestEmailSchema, type EmailBrandingInput, type EmailTemplateInput } from "@/lib/validation/admin-notifications";
 import { interpolate } from "@/lib/notifications/templates";
@@ -14,7 +15,7 @@ import { logEmail, retryEmailLog } from "@/lib/notifications/email-log";
 import type { Prisma } from "@/generated/prisma/client";
 
 export async function upsertEmailTemplate(raw: EmailTemplateInput) {
-  await requireStaff();
+  const session = await requirePermission("settings.manageWebsite");
   const input = emailTemplateInputSchema.parse(raw);
 
   await db.notificationTemplate.upsert({
@@ -23,11 +24,12 @@ export async function upsertEmailTemplate(raw: EmailTemplateInput) {
     create: { key: input.key, channel: "EMAIL", subject: input.subject, body: input.body, isActive: input.isActive },
   });
 
+  await logStaffActivity({ actorId: session.user.id, action: "EMAIL_TEMPLATE_SAVED", module: "settings", entityType: "NotificationTemplate", entityId: input.key });
   revalidatePath("/admin/notifications");
 }
 
 export async function updateEmailBrandingSettings(raw: EmailBrandingInput) {
-  await requireStaff();
+  const session = await requirePermission("settings.manageWebsite");
   const input = emailBrandingSchema.parse(raw);
 
   await db.setting.upsert({
@@ -36,13 +38,14 @@ export async function updateEmailBrandingSettings(raw: EmailBrandingInput) {
     update: { value: input as Prisma.InputJsonValue },
   });
 
+  await logStaffActivity({ actorId: session.user.id, action: "EMAIL_BRANDING_UPDATED", module: "settings" });
   revalidatePath("/", "layout");
   revalidatePath("/admin/notifications");
 }
 
 /** Renders the given (possibly unsaved) subject/body against the sample order fixture — no send, no log. */
 export async function previewEmailTemplate(input: { key: string; subject: string; body: string }): Promise<string> {
-  await requireStaff();
+  await requirePermission("settings.manageWebsite");
   const def = getEmailNotificationDef(input.key);
   if (!def) throw new Error("Unknown notification type.");
 
@@ -65,7 +68,7 @@ export async function previewEmailTemplate(input: { key: string; subject: string
 }
 
 export async function sendTestEmail(raw: { key: string; to: string; subject: string; body: string }) {
-  const session = await requireStaff();
+  const session = await requirePermission("settings.manageWebsite");
   const parsed = sendTestEmailSchema.parse({ key: raw.key, to: raw.to });
   const def = getEmailNotificationDef(parsed.key);
   if (!def) throw new Error("Unknown notification type.");
@@ -108,7 +111,8 @@ export async function sendTestEmail(raw: { key: string; to: string; subject: str
 }
 
 export async function retryFailedEmail(logId: string) {
-  await requireStaff();
+  const session = await requirePermission("settings.manageWebsite");
   await retryEmailLog(logId);
+  await logStaffActivity({ actorId: session.user.id, action: "EMAIL_RETRY", module: "settings", entityType: "EmailLog", entityId: logId });
   revalidatePath("/admin/notifications");
 }

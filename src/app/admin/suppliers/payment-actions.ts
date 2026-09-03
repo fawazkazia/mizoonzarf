@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireRole } from "@/lib/admin-auth";
-import { FINANCE_ROLES } from "@/lib/admin-permissions";
+import { requirePermission } from "@/lib/permissions/require-permission";
+import { logStaffActivity } from "@/lib/permissions/log-activity";
 import { postSupplierPaymentEntry } from "@/lib/finance/ledger";
 
 /**
@@ -13,7 +13,7 @@ import { postSupplierPaymentEntry } from "@/lib/finance/ledger";
  * that bound.
  */
 export async function recordSupplierPayment(invoiceId: string, amount: number) {
-  const session = await requireRole(FINANCE_ROLES);
+  const session = await requirePermission("accounting.createTransactions");
   if (amount <= 0) throw new Error("Amount must be positive.");
 
   await db.$transaction(async (tx) => {
@@ -39,6 +39,7 @@ export async function recordSupplierPayment(invoiceId: string, amount: number) {
     });
   });
 
+  await logStaffActivity({ actorId: session.user.id, action: "SUPPLIER_PAYMENT_RECORDED", module: "accounting", entityType: "Invoice", entityId: invoiceId, after: { amount } });
   revalidatePath("/admin/suppliers");
   revalidatePath("/admin/finance");
 }

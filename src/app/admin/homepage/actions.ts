@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/admin-auth";
+import { requirePermission } from "@/lib/permissions/require-permission";
+import { logStaffActivity } from "@/lib/permissions/log-activity";
 import { homepageSectionConfigSchemas, isConfigurableSection } from "@/lib/validation/homepage-section-config";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -32,7 +33,7 @@ function normalizeConfig(key: string, config: Record<string, unknown> | null | u
 }
 
 export async function saveHomepageSections(raw: SectionInput) {
-  await requireStaff();
+  const session = await requirePermission("settings.manageWebsite");
   const sections = sectionInputSchema.parse(raw);
 
   await Promise.all(
@@ -46,6 +47,7 @@ export async function saveHomepageSections(raw: SectionInput) {
     })
   );
 
+  await logStaffActivity({ actorId: session.user.id, action: "HOMEPAGE_SECTIONS_UPDATED", module: "settings", after: { sectionCount: sections.length } });
   revalidatePath("/admin/homepage");
   revalidatePath("/");
 }

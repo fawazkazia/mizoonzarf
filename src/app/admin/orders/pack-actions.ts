@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/admin-auth";
+import { requirePermission } from "@/lib/permissions/require-permission";
 import { updateOrderStatus } from "./actions";
 
 export type PackScanResult =
@@ -11,7 +11,7 @@ export type PackScanResult =
 
 /** Scans one barcode against an order's still-unpacked items — never throws for a mismatch, so the UI can show "WRONG PRODUCT" inline. */
 export async function scanPackItem(orderId: string, barcode: string): Promise<PackScanResult> {
-  const session = await requireStaff();
+  const session = await requirePermission("orders.changeStatus");
   const trimmed = barcode.trim();
 
   const variant = await db.productVariant.findUnique({ where: { barcode: trimmed } });
@@ -49,7 +49,7 @@ export async function scanPackItem(orderId: string, barcode: string): Promise<Pa
 }
 
 export async function markOrderPacked(orderId: string) {
-  await requireStaff();
+  await requirePermission("orders.changeStatus");
   const items = await db.orderItem.findMany({ where: { orderId } });
   const incomplete = items.filter((i) => i.packedQuantity < i.quantity);
   if (incomplete.length > 0) {

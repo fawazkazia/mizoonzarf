@@ -2,12 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/admin-auth";
+import { requirePermission } from "@/lib/permissions/require-permission";
+import { logStaffActivity } from "@/lib/permissions/log-activity";
 import { homepageThemeInputSchema, type HomepageThemeInput } from "@/lib/validation/homepage-theme";
 import type { Prisma } from "@/generated/prisma/client";
 
 export async function updateHomepageTheme(raw: HomepageThemeInput) {
-  await requireStaff();
+  const session = await requirePermission("settings.manageWebsite");
   const input = homepageThemeInputSchema.parse(raw);
 
   await db.setting.upsert({
@@ -16,6 +17,7 @@ export async function updateHomepageTheme(raw: HomepageThemeInput) {
     update: { value: input as Prisma.InputJsonValue },
   });
 
+  await logStaffActivity({ actorId: session.user.id, action: "HOMEPAGE_THEME_UPDATED", module: "settings" });
   revalidatePath("/", "layout");
   revalidatePath("/admin/homepage/theme");
 }

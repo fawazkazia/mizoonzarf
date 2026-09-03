@@ -11,6 +11,7 @@
     "db:down": "docker compose down",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed-staff-roles": "tsx prisma/seed-staff-roles.ts",
     "db:studio": "prisma studio"
   },
   "prisma": {

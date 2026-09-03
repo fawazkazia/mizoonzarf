@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireRole } from "@/lib/admin-auth";
-import { CUSTOMER_CARE_ROLES, CUSTOMER_CARE_MANAGER_ROLES } from "@/lib/admin-permissions";
+import { requirePermission } from "@/lib/permissions/require-permission";
+import { hasPermission } from "@/lib/permissions/resolve";
+import { logStaffActivity } from "@/lib/permissions/log-activity";
 import { sendTicketEmail } from "@/lib/notifications/ticket-email";
 import { sendWhatsAppFreeformBestEffort } from "@/lib/notifications/whatsapp";
 import { TICKET_STATUS_TRANSITIONS } from "@/lib/customer-care/status";
@@ -31,7 +32,7 @@ function revalidateTicket(ticketId: string) {
 /** Sends a customer-visible reply over Email or (best-effort) WhatsApp, logs it in the thread,
  * and stamps firstRespondedAt on the first such reply. */
 export async function replyToTicket(ticketId: string, params: { body: string; channel: "EMAIL" | "WHATSAPP"; attachments?: string[] }) {
-  const session = await requireRole(CUSTOMER_CARE_ROLES);
+  const session = await requirePermission("support.reply");
   const { ticket, email, phone } = await loadTicketContact(ticketId);
 
   const message = await db.ticketMessage.create({
@@ -74,7 +75,7 @@ export async function replyToTicket(ticketId: string, params: { body: string; ch
 
 /** Staff-only note — never emailed or shown to the customer (see the isInternal gate on TicketMessage). */
 export async function addInternalNote(ticketId: string, body: string, attachments?: string[]) {
-  const session = await requireRole(CUSTOMER_CARE_ROLES);
+  const session = await requirePermission("support.reply");
   await db.ticketMessage.create({
     data: { ticketId, authorType: "EMPLOYEE", authorId: session.user.id, isInternal: true, body, attachments: attachments ?? [] },
   });
@@ -82,15 +83,15 @@ export async function addInternalNote(ticketId: string, body: string, attachment
 }
 
 export async function updateTicketStatus(ticketId: string, status: TicketStatus) {
-  const session = await requireRole(CUSTOMER_CARE_ROLES);
+  const session = await requirePermission("support.reply");
   const ticket = await db.ticket.findUniqueOrThrow({ where: { id: ticketId } });
 
   const allowed = TICKET_STATUS_TRANSITIONS[ticket.status];
   if (ticket.status !== status && !allowed.includes(status)) {
     throw new Error(`Cannot move a ${ticket.status.replace(/_/g, " ")} ticket to ${status.replace(/_/g, " ")}.`);
   }
-  if (status === "CLOSED" && !CUSTOMER_CARE_MANAGER_ROLES.includes(session.user.role as never)) {
-    throw new Error("Only a Customer Care Manager can close a ticket.");
+  if (status === "CLOSED" && !hasPermission(session, "support.close")) {
+    throw new Error("You don't have permission to close tickets.");
   }
 
   const data: Prisma.TicketUncheckedUpdateInput = { status };
@@ -109,6 +110,15 @@ export async function updateTicketStatus(ticketId: string, status: TicketStatus)
       body: `Status changed to ${status.replace(/_/g, " ")} by ${session.user.name ?? session.user.email}.`,
     },
   });
+  await logStaffActivity({
+    actorId: session.user.id,
+    action: "TICKET_STATUS_CHANGED",
+    module: "support",
+    entityType: "Ticket",
+    entityId: ticketId,
+    before: { status: ticket.status },
+    after: { status },
+  });
 
   if (status === "RESOLVED") {
     const { email, name } = await loadTicketContact(ticketId);
@@ -125,15 +135,16 @@ export async function updateTicketStatus(ticketId: string, status: TicketStatus)
 }
 
 export async function updateTicketPriority(ticketId: string, priority: TicketPriority) {
-  await requireRole(CUSTOMER_CARE_ROLES);
+  const session = await requirePermission("support.reply");
   await db.ticket.update({ where: { id: ticketId }, data: { priority } });
+  await logStaffActivity({ actorId: session.user.id, action: "TICKET_PRIORITY_CHANGED", module: "support", entityType: "Ticket", entityId: ticketId, after: { priority } });
   revalidateTicket(ticketId);
 }
 
-/** Manager-only — assigns/reassigns/unassigns, and logs it so staff can see who's already working
- * a ticket instead of two people picking it up blind. */
+/** Assigns/reassigns/unassigns, and logs it so staff can see who's already working a ticket
+ * instead of two people picking it up blind. */
 export async function assignTicket(ticketId: string, assignedToId: string | null) {
-  await requireRole(CUSTOMER_CARE_MANAGER_ROLES);
+  const session = await requirePermission("support.assign");
   await db.ticket.update({ where: { id: ticketId }, data: { assignedToId, assignedAt: assignedToId ? new Date() : null } });
 
   let noteBody = "Ticket unassigned.";
@@ -142,6 +153,7 @@ export async function assignTicket(ticketId: string, assignedToId: string | null
     noteBody = `Ticket assigned to ${assignee?.name ?? assignee?.email ?? "staff member"}.`;
   }
   await db.ticketMessage.create({ data: { ticketId, authorType: "SYSTEM", isInternal: true, body: noteBody } });
+  await logStaffActivity({ actorId: session.user.id, action: "TICKET_ASSIGNED", module: "support", entityType: "Ticket", entityId: ticketId, after: { assignedToId } });
 
   revalidateTicket(ticketId);
 }

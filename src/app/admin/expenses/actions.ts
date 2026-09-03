@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireRole } from "@/lib/admin-auth";
-import { FINANCE_ROLES } from "@/lib/admin-permissions";
+import { requirePermission } from "@/lib/permissions/require-permission";
+import { logStaffActivity } from "@/lib/permissions/log-activity";
 import { expenseInputSchema, type ExpenseInput } from "@/lib/validation/admin-finance";
 import { EXPENSE_CATEGORY_ACCOUNT_CODES } from "@/lib/finance/accounts";
 import { postExpenseEntry, postExpenseReversalEntry } from "@/lib/finance/ledger";
@@ -20,7 +20,7 @@ function revalidateExpensePaths() {
  * clear error rather than silently leaving an unposted expense.
  */
 export async function createExpense(raw: ExpenseInput) {
-  const session = await requireRole(FINANCE_ROLES);
+  const session = await requirePermission("accounting.createTransactions");
   const input = expenseInputSchema.parse(raw);
 
   const expense = await db.$transaction(async (tx) => {
@@ -45,6 +45,7 @@ export async function createExpense(raw: ExpenseInput) {
     return created;
   });
 
+  await logStaffActivity({ actorId: session.user.id, action: "EXPENSE_CREATED", module: "accounting", entityType: "Expense", entityId: expense.id, after: { category: input.category, amount: input.amount } });
   revalidateExpensePaths();
   return { id: expense.id };
 }
@@ -56,7 +57,7 @@ export async function createExpense(raw: ExpenseInput) {
  * (which posts a reversing entry — see deleteExpense) and record a new one.
  */
 export async function updateExpense(id: string, data: { description: string; incurredAt: string; supplierId?: string | null; paidFrom?: string }) {
-  await requireRole(FINANCE_ROLES);
+  const session = await requirePermission("accounting.editTransactions");
   await db.expense.update({
     where: { id },
     data: {
@@ -66,6 +67,7 @@ export async function updateExpense(id: string, data: { description: string; inc
       paidFrom: data.paidFrom || null,
     },
   });
+  await logStaffActivity({ actorId: session.user.id, action: "EXPENSE_UPDATED", module: "accounting", entityType: "Expense", entityId: id, after: { description: data.description } });
   revalidateExpensePaths();
   return { id };
 }
@@ -74,7 +76,7 @@ export async function updateExpense(id: string, data: { description: string; inc
  * never removed, so the ledger's financial history survives even though the operational
  * Expense record is gone (matches "don't erase financial history without a reversal"). */
 export async function deleteExpense(id: string) {
-  const session = await requireRole(FINANCE_ROLES);
+  const session = await requirePermission("accounting.editTransactions");
   const expense = await db.expense.findUniqueOrThrow({ where: { id } });
 
   await db.$transaction(async (tx) => {
@@ -88,5 +90,6 @@ export async function deleteExpense(id: string) {
     await tx.expense.delete({ where: { id } });
   });
 
+  await logStaffActivity({ actorId: session.user.id, action: "EXPENSE_VOIDED", module: "accounting", entityType: "Expense", entityId: id, before: { description: expense.description, amount: Number(expense.amount) } });
   revalidateExpensePaths();
 }

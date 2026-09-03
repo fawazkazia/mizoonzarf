@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireStaff, requireRole } from "@/lib/admin-auth";
-import { OPERATIONS_ROLES } from "@/lib/admin-permissions";
+import { requirePermission } from "@/lib/permissions/require-permission";
+import { logStaffActivity } from "@/lib/permissions/log-activity";
 import { sendOrderEmail } from "@/lib/notifications/order-email";
 import { createNotification } from "@/lib/notifications/inapp";
 import { applyStockMovement, getDefaultWarehouseId } from "@/lib/inventory/stock";
@@ -22,7 +22,7 @@ const RETURN_STATUS_TEMPLATES: Partial<Record<ReturnStatus, string>> = {
 
 /** Scans a barcode to find open returns for that variant — the entry point for the warehouse "Scan Return" workflow. */
 export async function scanReturnItem(barcode: string) {
-  const session = await requireStaff();
+  const session = await requirePermission("inventory.view");
   const trimmed = barcode.trim();
 
   const variant = await db.productVariant.findUnique({
@@ -69,7 +69,7 @@ export async function scanReturnItem(barcode: string) {
 export async function resolveReturn(
   input: { returnId?: string; orderItemId?: string; resolution: ReturnResolution; warehouseId?: string; refundAmount?: number; adminNote?: string }
 ) {
-  const session = await requireRole(OPERATIONS_ROLES);
+  const session = await requirePermission("inventory.stockAdjustment");
   if (!input.returnId && !input.orderItemId) throw new Error("Missing return or order item reference.");
 
   let returnRecord = input.returnId
@@ -85,11 +85,25 @@ export async function resolveReturn(
   }
 
   if (input.resolution === "REFUND") {
-    // updateReturnStatus throws (and writes nothing) if this return was already refunded — only
-    // record the resolution once that guard has actually let the refund through, so a rejected
-    // duplicate-refund attempt can't leave the return's resolution field mutated on its own.
-    await updateReturnStatus(returnRecord.id, "REFUNDED", { refundAmount: input.refundAmount, adminNote: input.adminNote });
+    // Calls processRefund directly rather than going through updateReturnStatus() — that
+    // function is gated on "orders.refund" for its own (Customer Care) callers, which an
+    // Operations/Inventory account resolving a return here won't necessarily hold. Same
+    // underlying refund logic either way; only the permission-check path differs.
+    if (returnRecord.status === "REFUNDED") throw new Error("This return has already been refunded.");
+    const order = await db.order.findUniqueOrThrow({ where: { id: returnRecord.orderId }, select: { total: true } });
+    const amount = input.refundAmount ?? Number(order.total);
+    await processRefund({
+      orderId: returnRecord.orderId,
+      returnId: returnRecord.id,
+      amount,
+      reason: input.adminNote || "Refunded via return workflow.",
+      requestedById: session.user.id,
+    });
     await db.return.update({ where: { id: returnRecord.id }, data: { resolution: "REFUND" } });
+    await logStaffActivity({ actorId: session.user.id, action: "RETURN_REFUNDED", module: "inventory", entityType: "Return", entityId: returnRecord.id, after: { amount } });
+    revalidatePath("/admin/returns");
+    revalidatePath(`/admin/returns/${returnRecord.id}`);
+    revalidatePath("/admin/inventory");
     return;
   }
 
@@ -141,6 +155,7 @@ export async function resolveReturn(
     });
   });
 
+  await logStaffActivity({ actorId: session.user.id, action: "RETURN_RESOLVED", module: "inventory", entityType: "Return", entityId: returnRecord.id, after: { resolution: input.resolution } });
   revalidatePath("/admin/returns");
   revalidatePath(`/admin/returns/${returnRecord.id}`);
   revalidatePath("/admin/inventory");
@@ -151,7 +166,10 @@ export async function updateReturnStatus(
   status: ReturnStatus,
   data: { adminNote?: string; refundAmount?: number } = {}
 ) {
-  const session = await requireStaff();
+  // A single permission gates every transition this function handles — most are plain status
+  // changes, and only the REFUNDED branch actually processes money, so "orders.changeStatus" is
+  // the more accurate fit than "orders.refund" for the function as a whole.
+  const session = await requirePermission("orders.changeStatus");
 
   const existing = await db.return.findUnique({ where: { id: returnId }, include: { order: true } });
   if (!existing) throw new Error("Return not found.");
@@ -172,6 +190,7 @@ export async function updateReturnStatus(
       reason: data.adminNote || "Refunded via return workflow.",
       requestedById: session.user.id,
     });
+    await logStaffActivity({ actorId: session.user.id, action: "RETURN_STATUS_CHANGED", module: "orders", entityType: "Return", entityId: returnId, before: { status: existing.status }, after: { status: "REFUNDED", amount } });
     revalidatePath("/admin/returns");
     revalidatePath(`/admin/returns/${returnId}`);
     revalidatePath("/account/returns");
@@ -212,6 +231,7 @@ export async function updateReturnStatus(
     });
   }
 
+  await logStaffActivity({ actorId: session.user.id, action: "RETURN_STATUS_CHANGED", module: "orders", entityType: "Return", entityId: returnId, before: { status: existing.status }, after: { status } });
   revalidatePath("/admin/returns");
   revalidatePath(`/admin/returns/${returnId}`);
   revalidatePath("/account/returns");

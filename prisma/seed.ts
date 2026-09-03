@@ -4,6 +4,7 @@ import { PrismaClient, type Gender, type BannerPosition, type PromotionType, typ
 import { PrismaPg } from "@prisma/adapter-pg";
 import { deriveMirrorFields, type VariantAttr } from "../src/lib/inventory/variant-attributes";
 import { DEFAULT_CHART_OF_ACCOUNTS } from "../src/lib/finance/accounts";
+import { seedSystemStaffRoles } from "../src/lib/permissions/seed-system-roles";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const db = new PrismaClient({ adapter });
@@ -1454,6 +1455,9 @@ async function main() {
       role: "CUSTOMER_SUPPORT_MANAGER",
     },
   });
+
+  console.log("Creating system staff roles...");
+  await seedSystemStaffRoles(db);
 
   console.log("Creating ticket reply templates...");
   const ticketReplyTemplates: { name: string; category: string | null; body: string }[] = [

@@ -34,6 +34,18 @@ enum Gender {
   UNISEX
 }
 
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum LoginEvent {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+}
+
 enum ProductStatus {
   DRAFT
   ACTIVE
@@ -335,6 +347,34 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  /// Staff account lifecycle — CUSTOMER accounts stay ACTIVE and this is otherwise ignored.
+  status      UserStatus @default(ACTIVE)
+  /// Set/cleared on suspend/activate — checked in the jwt() callback the same way
+  /// passwordChangedAt is, so suspending a staff member kills their live session immediately.
+  suspendedAt DateTime?
+
+  /// Staff directory fields — populated only for staff accounts via the Staff & Roles admin UI.
+  employeeId String? @unique
+  department String?
+  jobTitle   String?
+
+  /// Granular permission system (Staff & Roles module) — layered on top of the legacy `role`
+  /// enum above rather than replacing it, so every pre-existing requireRole()/requireStaff()
+  /// check elsewhere in the app keeps working unchanged. See src/lib/permissions/resolve.ts.
+  staffRoleId          String?
+  staffRole            StaffRole? @relation(fields: [staffRoleId], references: [id], onDelete: SetNull)
+  /// Per-user permission overrides layered on top of staffRole.permissions (added minus removed).
+  permissionOverrides  String[]   @default([])
+  permissionRevocations String[]  @default([])
+
+  /// Touched on admin requests — "online now" in the Staff & Roles dashboard means within the
+  /// last few minutes of this timestamp.
+  lastActiveAt DateTime?
+
+  createdById String?
+  createdBy   User?   @relation("StaffCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  staffCreated User[] @relation("StaffCreatedBy")
+
   /// Optional personal details — populated by admin/Customer Care edits (no self-service UI
   /// collects these yet), shown on the Customer Care profile "if available" per spec.
   dateOfBirth DateTime?
@@ -381,8 +421,78 @@ model User {
   ticketMessages           TicketMessage[]           @relation("TicketMessageAuthor")
   customerNotesReceived    CustomerNote[]            @relation("CustomerNoteCustomer")
   customerNotesAuthored    CustomerNote[]            @relation("CustomerNoteAuthor")
+  staffActivityLogs        StaffActivityLog[]
+  loginHistory             LoginHistory[]
+  staffRolesCreated        StaffRole[]               @relation("StaffRoleCreatedBy")
 
   @@map("users")
+}
+
+/// Custom staff role with a granular permission set (Staff & Roles module). The 9 legacy `Role`
+/// enum values each get a seeded `isSystem` row here (see prisma/seed.ts) so existing staff
+/// accounts resolve permissions immediately without manual migration — see
+/// src/lib/permissions/resolve.ts. Super Admin can create unlimited additional custom roles.
+model StaffRole {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?  @db.Text
+  /// Permission keys from src/lib/permissions/catalog.ts — e.g. "customers.edit".
+  permissions String[] @default([])
+  /// Seeded roles mirroring the legacy Role enum — cannot be deleted, and the Super Admin
+  /// system role can never be edited to remove its own access (see requirePermission()).
+  isSystem    Boolean  @default(false)
+  /// Set only on the 9 seeded system rows, pointing back to the legacy enum value they mirror —
+  /// lets assignStaffRole() keep User.role (still authoritative for ~18 not-yet-migrated admin
+  /// sections) in sync when an account moves between a system role and a custom role.
+  legacyRole  Role?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdById String?
+  createdBy   User?   @relation("StaffRoleCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  users       User[]
+
+  @@map("staff_roles")
+}
+
+/// Append-only audit trail for staff actions (Staff & Roles module) — distinct from the
+/// existing generic AuditLog model, which is used only for failure-logging in a handful of
+/// finance/order call sites and is left untouched to avoid any risk to those. No update/delete
+/// path is exposed anywhere in the app, by construction.
+model StaffActivityLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  action     String
+  module     String
+  entityType String?
+  entityId   String?
+  before     Json?
+  after      Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  actor User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([actorId, createdAt])
+  @@index([module, createdAt])
+  @@map("staff_activity_logs")
+}
+
+/// Login/security history for staff accounts — drives the "Login & Security History" tab and
+/// the Staff & Roles dashboard's "recent security events" widget.
+model LoginHistory {
+  id        String     @id @default(cuid())
+  userId    String
+  event     LoginEvent
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime   @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("login_history")
 }
 
 /// Password-reset tokens for both customer and admin accounts (same User table). Only a
@@ -1667,6 +1777,10 @@ model Ticket {
   resolvedAt       DateTime?
   resolvedById     String?
   closedAt         DateTime?
+
+  /// Null until an admin opens the ticket detail page. Drives the unseen-ticket notification
+  /// badge on the Customer Care topbar button — see getUnseenTicketCount().
+  lastSeenByAdminAt DateTime?
 
   /// MANUAL | CONTACT_FORM | ORDER_CANCELLATION | RETURN_REQUEST | REFUND — provenance of
   /// auto-created tickets, so dashboard/reports can distinguish system-originated volume.

@@ -1,11 +1,12 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/admin-auth";
+import { requirePermission } from "@/lib/permissions/require-permission";
+import { logStaffActivity } from "@/lib/permissions/log-activity";
 import { notify } from "@/lib/notifications/registry";
 
 export async function sendCartRecoveryEmail(cartId: string) {
-  await requireStaff();
+  const session = await requirePermission("marketing.editCampaigns");
 
   const cart = await db.cart.findUnique({
     where: { id: cartId },
@@ -20,4 +21,6 @@ export async function sendCartRecoveryEmail(cartId: string) {
     templateKey: "cart_abandoned",
     variables: { customer_name: cart.user.name ?? "there", item_count: cart.items.length },
   });
+
+  await logStaffActivity({ actorId: session.user.id, action: "CART_RECOVERY_EMAIL_SENT", module: "marketing", entityType: "Cart", entityId: cartId });
 }

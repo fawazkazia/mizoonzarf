@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireRole, requireStaff } from "@/lib/admin-auth";
-import { OPERATIONS_ROLES } from "@/lib/admin-permissions";
+import { requirePermission } from "@/lib/permissions/require-permission";
+import { logStaffActivity } from "@/lib/permissions/log-activity";
 import { getShippingProvider } from "@/lib/shipping/registry";
 
 export interface WarehousePickupDetails {
@@ -19,7 +19,7 @@ export interface WarehousePickupDetails {
 }
 
 export async function listWarehouses() {
-  await requireStaff();
+  await requirePermission("inventory.view");
   return db.warehouse.findMany({ where: { isActive: true }, orderBy: { isDefault: "desc" } });
 }
 
@@ -29,36 +29,39 @@ function revalidateWarehousePaths() {
 }
 
 export async function createWarehouse(data: { name: string; code: string; address?: string }) {
-  await requireRole(OPERATIONS_ROLES);
+  const session = await requirePermission("inventory.edit");
   const code = data.code.trim().toUpperCase();
   const existing = await db.warehouse.findUnique({ where: { code } });
   if (existing) throw new Error(`Warehouse code "${code}" is already in use.`);
 
   const warehouse = await db.warehouse.create({ data: { name: data.name.trim(), code, address: data.address || null } });
+  await logStaffActivity({ actorId: session.user.id, action: "WAREHOUSE_CREATED", module: "inventory", entityType: "Warehouse", entityId: warehouse.id, after: { name: warehouse.name, code } });
   revalidateWarehousePaths();
   return warehouse;
 }
 
 export async function updateWarehouse(id: string, data: { name: string; address?: string; isActive: boolean }) {
-  await requireRole(OPERATIONS_ROLES);
+  const session = await requirePermission("inventory.edit");
   const warehouse = await db.warehouse.update({
     where: { id },
     data: { name: data.name.trim(), address: data.address || null, isActive: data.isActive },
   });
+  await logStaffActivity({ actorId: session.user.id, action: "WAREHOUSE_UPDATED", module: "inventory", entityType: "Warehouse", entityId: id, after: { name: warehouse.name, isActive: warehouse.isActive } });
   revalidateWarehousePaths();
   return warehouse;
 }
 
 export async function deactivateWarehouse(id: string) {
-  await requireRole(OPERATIONS_ROLES);
+  const session = await requirePermission("inventory.edit");
   const warehouse = await db.warehouse.findUniqueOrThrow({ where: { id } });
   if (warehouse.isDefault) throw new Error("Can't deactivate the default warehouse.");
   await db.warehouse.update({ where: { id }, data: { isActive: false } });
+  await logStaffActivity({ actorId: session.user.id, action: "WAREHOUSE_DEACTIVATED", module: "inventory", entityType: "Warehouse", entityId: id, before: { name: warehouse.name } });
   revalidateWarehousePaths();
 }
 
 export async function updateWarehousePickupDetails(id: string, data: WarehousePickupDetails) {
-  await requireRole(OPERATIONS_ROLES);
+  const session = await requirePermission("inventory.edit");
   const warehouse = await db.warehouse.update({
     where: { id },
     data: {
@@ -73,6 +76,7 @@ export async function updateWarehousePickupDetails(id: string, data: WarehousePi
       pincode: data.pincode || null,
     },
   });
+  await logStaffActivity({ actorId: session.user.id, action: "WAREHOUSE_PICKUP_DETAILS_UPDATED", module: "inventory", entityType: "Warehouse", entityId: id });
   revalidateWarehousePaths();
   revalidatePath("/admin/shipping");
   return warehouse;
@@ -80,7 +84,7 @@ export async function updateWarehousePickupDetails(id: string, data: WarehousePi
 
 /** Registers this warehouse as a Shiprocket pickup location and stores the returned nickname. */
 export async function registerWarehouseWithShiprocket(id: string) {
-  await requireRole(OPERATIONS_ROLES);
+  const session = await requirePermission("inventory.edit");
   const warehouse = await db.warehouse.findUniqueOrThrow({ where: { id } });
 
   if (!warehouse.address || !warehouse.city || !warehouse.pincode || !warehouse.phone) {
@@ -104,6 +108,7 @@ export async function registerWarehouseWithShiprocket(id: string) {
   });
 
   await db.warehouse.update({ where: { id }, data: { shiprocketPickupLocation: result.pickupLocationName } });
+  await logStaffActivity({ actorId: session.user.id, action: "WAREHOUSE_SHIPROCKET_REGISTERED", module: "inventory", entityType: "Warehouse", entityId: id, after: { pickupLocationName: result.pickupLocationName } });
   revalidateWarehousePaths();
   return result;
 }

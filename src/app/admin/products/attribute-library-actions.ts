@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/admin-auth";
+import { requirePermission } from "@/lib/permissions/require-permission";
 import { mergeValues, type LibValue } from "@/lib/inventory/variant-attributes";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -11,7 +11,7 @@ import type { Prisma } from "@/generated/prisma/client";
  * attribute's `isColor` is fixed at first creation (a later product can't silently flip it).
  */
 export async function addAttributeLibraryValues(name: string, isColor: boolean, values: LibValue[]) {
-  await requireStaff();
+  await requirePermission("products.edit");
   const trimmedName = name.trim();
   if (!trimmedName || values.length === 0) return;
 

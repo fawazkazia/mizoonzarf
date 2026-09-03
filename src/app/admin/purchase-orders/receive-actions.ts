@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireRole } from "@/lib/admin-auth";
-import { OPERATIONS_ROLES } from "@/lib/admin-permissions";
+import { requirePermission } from "@/lib/permissions/require-permission";
+import { logStaffActivity } from "@/lib/permissions/log-activity";
 import { applyStockMovement } from "@/lib/inventory/stock";
 import { postPOReceivedEntry } from "@/lib/finance/ledger";
 
@@ -14,7 +14,7 @@ import { postPOReceivedEntry } from "@/lib/finance/ledger";
  * the moment they click "Receive" is strictly better than letting a bad ledger entry through.
  */
 export async function receivePurchaseOrderLine(poItemId: string, quantity: number) {
-  const session = await requireRole(OPERATIONS_ROLES);
+  const session = await requirePermission("inventory.stockAdjustment");
   if (quantity <= 0) throw new Error("Quantity must be positive.");
 
   const item = await db.purchaseOrderItem.findUniqueOrThrow({
@@ -86,6 +86,15 @@ export async function receivePurchaseOrderLine(poItemId: string, quantity: numbe
         receivedAt: allReceived ? new Date() : undefined,
       },
     });
+  });
+
+  await logStaffActivity({
+    actorId: session.user.id,
+    action: "PURCHASE_ORDER_LINE_RECEIVED",
+    module: "inventory",
+    entityType: "PurchaseOrder",
+    entityId: po.id,
+    after: { poItemId, quantity, amount },
   });
 
   revalidatePath(`/admin/purchase-orders/${po.id}`);

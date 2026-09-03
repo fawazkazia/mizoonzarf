@@ -1,7 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/admin-auth";
+import { requirePermission } from "@/lib/permissions/require-permission";
+import { logStaffActivity } from "@/lib/permissions/log-activity";
 import { productInputSchema, type ProductInput } from "@/lib/validation/admin-product";
 import { notifyWishlistersOfProduct } from "@/lib/notifications/inapp";
 import { generateCode128 } from "@/lib/barcode/generate";
@@ -18,7 +19,7 @@ export async function variantBarcodeFields(tx: Prisma.TransactionClient, typed?:
 }
 
 export async function createProduct(raw: ProductInput) {
-  await requireStaff();
+  const session = await requirePermission("products.add");
   const input = productInputSchema.parse(raw);
 
   const existingSku = await db.product.findUnique({ where: { sku: input.sku } });
@@ -82,12 +83,13 @@ export async function createProduct(raw: ProductInput) {
     return created;
   });
 
+  await logStaffActivity({ actorId: session.user.id, action: "PRODUCT_CREATED", module: "products", entityType: "Product", entityId: product.id, after: { name: input.name, sku: input.sku } });
   revalidateProductPaths(product.slug);
   return { id: product.id };
 }
 
 export async function updateProduct(id: string, raw: ProductInput) {
-  await requireStaff();
+  const session = await requirePermission("products.edit");
   const input = productInputSchema.parse(raw);
 
   const conflictSku = await db.product.findFirst({ where: { sku: input.sku, id: { not: id } } });
@@ -206,22 +208,24 @@ export async function updateProduct(id: string, raw: ProductInput) {
     });
   }
 
+  await logStaffActivity({ actorId: session.user.id, action: "PRODUCT_UPDATED", module: "products", entityType: "Product", entityId: id, after: { name: input.name, sku: input.sku } });
   revalidateProductPaths(input.slug);
   return { id };
 }
 
 export async function deleteProduct(id: string) {
-  await requireStaff();
+  const session = await requirePermission("products.delete");
   const orderItemCount = await db.orderItem.count({ where: { productId: id } });
   if (orderItemCount > 0) {
     throw new Error("This product has existing orders and can't be deleted. Archive it instead.");
   }
   const product = await db.product.delete({ where: { id } });
+  await logStaffActivity({ actorId: session.user.id, action: "PRODUCT_DELETED", module: "products", entityType: "Product", entityId: id, before: { name: product.name, sku: product.sku } });
   revalidateProductPaths(product.slug);
 }
 
 export async function duplicateProduct(id: string) {
-  await requireStaff();
+  const session = await requirePermission("products.add");
   const product = await db.product.findUnique({
     where: { id },
     include: { images: true, variants: true, collections: true, variantAttributes: true },
@@ -299,6 +303,7 @@ export async function duplicateProduct(id: string) {
     return copy;
   });
 
+  await logStaffActivity({ actorId: session.user.id, action: "PRODUCT_DUPLICATED", module: "products", entityType: "Product", entityId: created.id, after: { name: created.name, sku: created.sku } });
   revalidateProductPaths();
   return { id: created.id };
 }

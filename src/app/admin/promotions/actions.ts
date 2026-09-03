@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/admin-auth";
+import { requirePermission } from "@/lib/permissions/require-permission";
+import { logStaffActivity } from "@/lib/permissions/log-activity";
 import { couponInputSchema, promotionInputSchema, type CouponInput, type PromotionInput } from "@/lib/validation/admin-promotion";
 
 function revalidatePromotionPaths() {
@@ -12,7 +13,7 @@ function revalidatePromotionPaths() {
 }
 
 export async function createCoupon(raw: CouponInput) {
-  await requireStaff();
+  const session = await requirePermission("marketing.manageCoupons");
   const input = couponInputSchema.parse(raw);
   const code = input.code.trim().toUpperCase();
 
@@ -51,26 +52,29 @@ export async function createCoupon(raw: CouponInput) {
       isActive: input.isActive,
     },
   });
+  await logStaffActivity({ actorId: session.user.id, action: "COUPON_CREATED", module: "marketing", entityType: "Coupon", entityId: code, after: { code, discountType: input.discountType, discountValue: input.discountValue } });
   revalidatePromotionPaths();
 }
 
 export async function toggleCoupon(code: string, isActive: boolean) {
-  await requireStaff();
+  const session = await requirePermission("marketing.manageCoupons");
   await db.coupon.update({ where: { code }, data: { isActive } });
+  await logStaffActivity({ actorId: session.user.id, action: "COUPON_TOGGLED", module: "marketing", entityType: "Coupon", entityId: code, after: { isActive } });
   revalidatePromotionPaths();
 }
 
 export async function deleteCoupon(code: string) {
-  await requireStaff();
+  const session = await requirePermission("marketing.manageCoupons");
   await db.coupon.delete({ where: { code } });
+  await logStaffActivity({ actorId: session.user.id, action: "COUPON_DELETED", module: "marketing", entityType: "Coupon", entityId: code });
   revalidatePromotionPaths();
 }
 
 export async function createPromotion(raw: PromotionInput) {
-  await requireStaff();
+  const session = await requirePermission("marketing.createCampaigns");
   const input = promotionInputSchema.parse(raw);
 
-  await db.promotion.create({
+  const promotion = await db.promotion.create({
     data: {
       name: input.name,
       type: input.type,
@@ -83,17 +87,20 @@ export async function createPromotion(raw: PromotionInput) {
       bannerText: input.bannerText || null,
     },
   });
+  await logStaffActivity({ actorId: session.user.id, action: "PROMOTION_CREATED", module: "marketing", entityType: "Promotion", entityId: promotion.id, after: { name: input.name } });
   revalidatePromotionPaths();
 }
 
 export async function togglePromotion(id: string, isActive: boolean) {
-  await requireStaff();
+  const session = await requirePermission("marketing.editCampaigns");
   await db.promotion.update({ where: { id }, data: { isActive } });
+  await logStaffActivity({ actorId: session.user.id, action: "PROMOTION_TOGGLED", module: "marketing", entityType: "Promotion", entityId: id, after: { isActive } });
   revalidatePromotionPaths();
 }
 
 export async function deletePromotion(id: string) {
-  await requireStaff();
+  const session = await requirePermission("marketing.editCampaigns");
   await db.promotion.delete({ where: { id } });
+  await logStaffActivity({ actorId: session.user.id, action: "PROMOTION_DELETED", module: "marketing", entityType: "Promotion", entityId: id });
   revalidatePromotionPaths();
 }

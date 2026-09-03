@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireStaff } from "@/lib/admin-auth";
+import { requirePermission } from "@/lib/permissions/require-permission";
+import { logStaffActivity } from "@/lib/permissions/log-activity";
 import { bannerInputSchema, type BannerInput } from "@/lib/validation/admin-banner";
 
 function normalize(input: BannerInput) {
@@ -33,23 +34,26 @@ function revalidateBannerPaths() {
 }
 
 export async function createBanner(raw: BannerInput) {
-  await requireStaff();
+  const session = await requirePermission("marketing.manageBanners");
   const input = bannerInputSchema.parse(raw);
   const banner = await db.banner.create({ data: normalize(input) });
+  await logStaffActivity({ actorId: session.user.id, action: "BANNER_CREATED", module: "marketing", entityType: "Banner", entityId: banner.id, after: { title: input.title } });
   revalidateBannerPaths();
   return { id: banner.id };
 }
 
 export async function updateBanner(id: string, raw: BannerInput) {
-  await requireStaff();
+  const session = await requirePermission("marketing.manageBanners");
   const input = bannerInputSchema.parse(raw);
   await db.banner.update({ where: { id }, data: normalize(input) });
+  await logStaffActivity({ actorId: session.user.id, action: "BANNER_UPDATED", module: "marketing", entityType: "Banner", entityId: id, after: { title: input.title } });
   revalidateBannerPaths();
   return { id };
 }
 
 export async function deleteBanner(id: string) {
-  await requireStaff();
+  const session = await requirePermission("marketing.manageBanners");
   await db.banner.delete({ where: { id } });
+  await logStaffActivity({ actorId: session.user.id, action: "BANNER_DELETED", module: "marketing", entityType: "Banner", entityId: id });
   revalidateBannerPaths();
 }
