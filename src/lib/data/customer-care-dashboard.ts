@@ -4,6 +4,12 @@ import type { TicketStatus } from "@/generated/prisma/client";
 
 const OPEN_STATUSES: TicketStatus[] = ["NEW", "OPEN", "IN_PROGRESS", "WAITING_FOR_CUSTOMER", "ESCALATED"];
 
+/** Tickets no admin has opened yet — drives the notification badge on the Customer Care
+ * topbar button. */
+export async function getUnseenTicketCount() {
+  return db.ticket.count({ where: { lastSeenByAdminAt: null } });
+}
+
 export async function getCustomerCareDashboardStats() {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);

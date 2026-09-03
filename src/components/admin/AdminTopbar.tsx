@@ -16,7 +16,15 @@ interface SearchResults {
   variants: { id: string; sku: string; barcode: string | null; product: { id: string; name: string } }[];
 }
 
-export function AdminTopbar({ name, role }: { name: string; role: string }) {
+export function AdminTopbar({
+  name,
+  role,
+  unseenTicketCount = 0,
+}: {
+  name: string;
+  role: string;
+  unseenTicketCount?: number;
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResults | null>(null);
@@ -153,10 +161,18 @@ export function AdminTopbar({ name, role }: { name: string; role: string }) {
         {canSeeCustomerCare && (
           <Link
             href="/admin/customer-care"
-            className="flex items-center gap-2 border border-ink bg-ink px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-paper transition-colors hover:bg-ink-soft"
+            className="relative flex items-center gap-2 border border-ink bg-ink px-3 py-1.5 text-xs uppercase tracking-[0.1em] text-paper transition-colors hover:bg-ink-soft"
           >
             <Headset size={14} />
             <span className="hidden sm:inline">Customer Care</span>
+            {unseenTicketCount > 0 && (
+              <span
+                aria-label={`${unseenTicketCount} unseen ${unseenTicketCount === 1 ? "ticket" : "tickets"}`}
+                className="absolute -right-1.5 -top-1.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-sale px-1 text-[10px] font-semibold leading-none text-paper"
+              >
+                {unseenTicketCount > 99 ? "99+" : unseenTicketCount}
+              </span>
+            )}
           </Link>
         )}
         <button

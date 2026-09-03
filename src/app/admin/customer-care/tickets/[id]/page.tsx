@@ -49,6 +49,10 @@ export default async function TicketDetailPage({ params }: PageProps) {
 
   if (!ticket) notFound();
 
+  if (!ticket.lastSeenByAdminAt) {
+    await db.ticket.update({ where: { id: ticket.id }, data: { lastSeenByAdminAt: new Date() } });
+  }
+
   const [staff, templates, customer360] = await Promise.all([
     db.user.findMany({ where: { role: { in: CUSTOMER_CARE_ROLES } }, select: { id: true, name: true, email: true } }),
     db.ticketReplyTemplate.findMany({

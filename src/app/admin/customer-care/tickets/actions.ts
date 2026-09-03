@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireRole } from "@/lib/admin-auth";
-import { CUSTOMER_CARE_ROLES } from "@/lib/admin-permissions";
+import { requirePermission } from "@/lib/permissions/require-permission";
+import { logStaffActivity } from "@/lib/permissions/log-activity";
 import { generateTicketNumber } from "@/lib/customer-care/ticket-number";
 import { TicketCategory } from "@/generated/prisma/client";
 
@@ -23,7 +23,7 @@ const createTicketSchema = z.object({
 /** Staff-initiated ticket (e.g. logging a phone call) — a customer can be looked up by email
  * (resolves to a real account) or entered as a guest (name/email/phone, no account). */
 export async function createTicketManual(raw: z.infer<typeof createTicketSchema>) {
-  await requireRole(CUSTOMER_CARE_ROLES);
+  const session = await requirePermission("support.createTickets");
   const input = createTicketSchema.parse(raw);
 
   const customer = input.customerEmail ? await db.user.findUnique({ where: { email: input.customerEmail }, select: { id: true } }) : null;
@@ -45,6 +45,8 @@ export async function createTicketManual(raw: z.infer<typeof createTicketSchema>
         guestEmail: customer ? null : input.customerEmail || null,
         guestPhone: customer ? null : input.guestPhone || null,
         orderId: order?.id ?? null,
+        // Staff is creating this ticket themselves, so it's already "seen" — no badge for it.
+        lastSeenByAdminAt: new Date(),
       },
     });
     await tx.ticketMessage.create({
@@ -53,6 +55,7 @@ export async function createTicketManual(raw: z.infer<typeof createTicketSchema>
     return created;
   });
 
+  await logStaffActivity({ actorId: session.user.id, action: "TICKET_CREATED", module: "support", entityType: "Ticket", entityId: ticket.id, after: { ticketNumber: ticket.ticketNumber, category: input.category } });
   revalidatePath("/admin/customer-care/tickets");
   revalidatePath("/admin/customer-care");
   return { id: ticket.id };

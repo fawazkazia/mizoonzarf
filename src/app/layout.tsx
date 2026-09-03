@@ -46,6 +46,10 @@ export async function generateMetadata(): Promise<Metadata> {
     title: { default: `${settings.brandName} — ${settings.brandTagline}`, template: `%s | ${settings.brandName}` },
     description: settings.footer.about,
     metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
+    // Falls back to the static /public/favicon.ico when no admin-uploaded favicon is set —
+    // must live under public/, not app/, since a literal app/favicon.ico always wins over
+    // this field (see src/app/admin/settings/SettingsForm.tsx for the upload UI).
+    icons: { icon: settings.branding.faviconUrl || "/favicon.ico" },
     // Some mobile browsers auto-link phone-number-looking text into a `tel:`
     // anchor after the initial paint — since that happens after React's
     // server-rendered HTML is already sent, it disagrees with what hydration
