@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requireSuperAdmin } from "@/lib/admin-auth";
 import { logStaffActivity } from "@/lib/permissions/log-activity";
 import { ALL_PERMISSION_KEYS, isValidPermissionKey } from "@/lib/permissions/catalog";
+import { seedSystemStaffRoles } from "@/lib/permissions/seed-system-roles";
 
 const SUPER_ADMIN_ROLE_NAME = "Super Admin";
 
@@ -100,4 +101,19 @@ export async function deleteStaffRole(roleId: string) {
   });
 
   revalidatePath("/admin/settings/users/roles");
+}
+
+/**
+ * Re-runs the system StaffRole seeding (the 9 roles mirroring the legacy Role enum) in place —
+ * exists so a fresh environment (or one where prisma/seed-staff-roles.ts couldn't be run
+ * directly, e.g. because DATABASE_URL is a Vercel "Sensitive" env var and isn't retrievable
+ * outside the running app) can be brought up to date with one click from inside the admin panel
+ * itself, where the DB connection already exists. Fully idempotent — safe to click any time.
+ */
+export async function syncSystemStaffRoles() {
+  const session = await requireSuperAdmin();
+  await seedSystemStaffRoles(db);
+  await logStaffActivity({ actorId: session.user.id, action: "STAFF_ROLES_SYNCED", module: "staff" });
+  revalidatePath("/admin/settings/users/roles");
+  revalidatePath("/admin/settings/users");
 }

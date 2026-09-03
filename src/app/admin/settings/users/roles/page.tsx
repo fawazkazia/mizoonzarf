@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import { StaffTabs } from "../StaffTabs";
 import { RoleRowActions } from "./RoleRowActions";
+import { SyncSystemRolesButton } from "./SyncSystemRolesButton";
 
 export const metadata = { title: "Roles & Permissions" };
 
@@ -21,9 +22,12 @@ export default async function RolesPage() {
           <h1 className="font-display text-3xl">Staff &amp; Roles</h1>
           <p className="mt-1 text-sm text-ink-soft">Create unlimited custom roles with granular permissions.</p>
         </div>
-        <ButtonLink href="/admin/settings/users/roles/new" size="sm">
-          + New Role
-        </ButtonLink>
+        <div className="flex gap-2">
+          <SyncSystemRolesButton />
+          <ButtonLink href="/admin/settings/users/roles/new" size="sm">
+            + New Role
+          </ButtonLink>
+        </div>
       </div>
 
       <StaffTabs />
